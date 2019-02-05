@@ -1,0 +1,6 @@
+# Bazel output
+bazel-bin
+bazel-genfiles
+bazel-nestopt
+bazel-out
+bazel-testlogs
