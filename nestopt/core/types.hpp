@@ -7,7 +7,7 @@
 namespace nestopt {
 namespace core {
 
-using Scalar = double;
+using Scalar = float;
 using Size   = std::size_t;
 using Vector = std::vector<Scalar>;
 

@@ -1,31 +1,26 @@
-load("@//third_party:cython.bzl", "pyx_library")
-
-cc_library(
-    name = "core_lib",
-    hdrs = glob(["core/**/*.hpp"]),
-    srcs = glob(["core/**/*.cpp"]),
-    visibility= [ "//visibility:public" ],
-)
-
-cc_library(
-    name = "nestopt_lib",
-    deps = [ ":core_lib" ],
-)
+load("@//tools:python.bzl", "pyx_binaries",
+                            "py_package")
 
 py_library(
-    name = "nestopt_py",
-    srcs = glob(["python/**/*.py"]),
+    name = "pxd_headers",
+    srcs = glob([ "nestoptpy/**/*.pxd" ]),
 )
 
-pyx_library(
-    name = "nestopt_native",
-    srcs = glob([
-        "python/native/**/*.pyx",
-        "python/native/**/*.pxd"
-    ]),
-    deps = [
-        ":nestopt_lib",
-        "@python//:headers",
+pyx_binaries(
+    name = "nestoptpy_native",
+    pyx_srcs = glob([ "nestoptpy/**/*.pyx", ]),
+    pyx_deps = [
+        ":pxd_headers",
+        "@//nestopt/core:headers",
     ],
-    py_deps = [ ":nestopt_py" ],
+    cc_deps = [
+        "@python//:headers",
+        "@//nestopt/core:nestopt_core",
+    ]
+)
+
+py_package(
+    name = "nestoptpy",
+    srcs = glob(["nestoptpy/**/*.py"]),
+    deps = [ ":nestoptpy_native" ],
 )

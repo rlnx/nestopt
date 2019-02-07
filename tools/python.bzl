@@ -11,7 +11,7 @@ _PYTHON_LIB_PATH = "PYTHON_LIB_PATH"
 
 def _tpl(repository_ctx, tpl, substitutions={}):
     repository_ctx.template("BUILD",
-                            Label("@//third_party/templates:%s.BUILD.tpl" % tpl),
+                            Label("@//tools/templates:%s.BUILD.tpl" % tpl),
                             substitutions)
 
 
@@ -256,72 +256,96 @@ def _python_repository_impl(repository_ctx):
     })
 
 
+def _parent_path(path):
+    return path.rsplit('/', 1)[0]
+
+
+def _subpath(full, root):
+    root = root.strip('/') + '/'
+    full = full.strip('/') + '/'
+    len_root = len(root)
+    if (len_root <= len(full) and
+        full[:len_root] == root):
+        return full[len_root:].rstrip('/')
+    return full.rstrip('/')
+
+
+def _is_subpath_of(full, root):
+    root = root.strip('/') + '/'
+    return full[:len(root)] == root
+
+
+def _path_in_package(my_ctx, path):
+    rpath = _subpath(path, my_ctx.build_dir_path)
+    if not _is_subpath_of(rpath, my_ctx.pack_dir_name):
+        fail('All py_package files must be located in {}'.format(
+             my_ctx.build_dir_path + '/' + my_ctx.pack_dir_name))
+    return rpath
+
+
+def _copy_to_package(my_ctx, file):
+    path_in_pack = _path_in_package(my_ctx, file.short_path)
+    file_copy = my_ctx.actions.declare_file(path_in_pack)
+    my_ctx.actions.run_shell(
+        inputs  = [ file ],
+        outputs = [ file_copy ],
+        command = "cp {} {}".format(file.path, file_copy.path)
+    )
+    return file_copy
+
+
+def _py_package_impl(ctx):
+    my_ctx = struct(
+        actions = ctx.actions,
+        pack_dir_name = ctx.attr.name,
+        build_dir_path = _parent_path(ctx.build_file_path),
+    )
+    files = [ _copy_to_package(my_ctx, src)
+              for src in ctx.files.srcs ]
+    return DefaultInfo(files = depset(files + ctx.files.deps))
+
+
 # Adapted with modifications from
 # tensorflow/tensorflow/core/platform/default/build_config.bzl
-# Native Bazel rules don't exist yet to compile Cython code, but rules have
-# been written at cython/cython and tensorflow/tensorflow. We branch from
-# Tensorflow's version as it is more actively maintained and works for gRPC
-# Python's needs.
-def pyx_library(name, deps=[], py_deps=[], srcs=[], **kwargs):
-    """Compiles a group of .pyx / .pxd / .py files.
-    First runs Cython to create .cpp files for each input .pyx or .py + .pxd
-    pair. Then builds a shared object for each, passing "deps" to each cc_binary
-    rule (includes Python headers by default). Finally, creates a py_library rule
-    with the shared objects and any pure Python "srcs", with py_deps as its
-    dependencies; the shared objects can be imported like normal Python files.
+def pyx_binaries(name, pyx_srcs=[], pyx_deps=[], cc_deps=[], **kwargs):
+    """Compiles a group of .pyx / .pxd files.
+
+    First runs Cython to create .cpp files for each input .pyx. Then builds a
+    shared object for each, passing "deps" to each cc_binary rule. Finally,
+    creates a filegroup rule with the native python extensions.
     Args:
         name: Name for the rule.
         deps: C/C++ dependencies of the Cython (e.g. Numpy headers).
-        py_deps: Pure Python dependencies of the final library.
-        srcs: .py, .pyx, or .pxd files to either compile or pass through.
-        **kwargs: Extra keyword arguments passed to the py_library.
+        srcs: .pyx, or .pxd files to either compile or pass through.
     """
-    # First filter out files that should be run compiled vs. passed through.
-    py_srcs = []
-    pyx_srcs = []
-    pxd_srcs = []
-    for src in srcs:
-        if src.endswith(".pyx") or (src.endswith(".py") and
-                                    src[:-3] + ".pxd" in srcs):
-            pyx_srcs.append(src)
-        elif src.endswith(".py"):
-            py_srcs.append(src)
-        else:
-            pxd_srcs.append(src)
-        if src.endswith("__init__.py"):
-            pxd_srcs.append(src)
-
-    # Invoke cython to produce the shared object libraries.
-    for filename in pyx_srcs:
-        native.genrule(
-            name=filename + "_cython_translation",
-            srcs=[filename],
-            outs=[filename.split(".")[0] + ".cpp"],
-            cmd=
-            "PYTHONHASHSEED=0 cython --cplus $(SRCS) --output-file $(OUTS)",
-            tools=pxd_srcs,
-        )
-
-    shared_objects = []
     for src in pyx_srcs:
-        stem = src.split(".")[0]
-        shared_object_name = stem + ".so"
-        native.cc_binary(
-            name=shared_object_name,
-            srcs=[stem + ".cpp"],
-            deps=deps,
-            linkshared=1,
-        )
-        shared_objects.append(shared_object_name)
+        if not src.endswith('.pyx'):
+            fail("Only .pyx files are allowed in 'srcs'")
 
-    # Now create a py_library with these shared objects as data.
-    native.py_library(
-        name=name,
-        srcs=py_srcs,
-        deps=py_deps,
-        srcs_version="PY2AND3",
-        data=shared_objects,
-        **kwargs)
+    stems = [ x[:-3] for x in pyx_srcs ]
+    pybins = [ x + 'so' for x in stems ]
+
+    for stem in stems:
+        native.genrule(
+            name = stem + 'cythonize',
+            srcs = [ stem + 'pyx' ],
+            outs = [ stem + 'cpp' ],
+            cmd = ('PYTHONHASHSEED=0 python -m cython -X language_level=3 ' +
+                   '--cplus $(SRCS) --output-file $(OUTS)'),
+            tools = pyx_deps,
+        )
+        native.cc_binary(
+            name = stem + 'so',
+            srcs = [ stem + 'cpp' ],
+            deps = cc_deps,
+            linkshared = 1,
+        )
+
+    native.filegroup(
+        name = name,
+        srcs = pybins,
+        **kwargs
+    )
 
 
 python_repository = repository_rule(
@@ -331,4 +355,19 @@ python_repository = repository_rule(
         _PYTHON_BIN_PATH,
         _PYTHON_LIB_PATH,
     ],
+)
+
+
+py_package = rule(
+    implementation = _py_package_impl,
+    attrs = {
+        'srcs': attr.label_list(
+            mandatory = True,
+            allow_files = True,
+        ),
+        'deps': attr.label_list(
+            mandatory = True,
+            allow_files = True,
+        ),
+    },
 )
