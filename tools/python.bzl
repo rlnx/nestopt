@@ -227,6 +227,15 @@ def _get_python_import_lib_name(repository_ctx, python_bin):
                        "(See ./configure or " + _PYTHON_BIN_PATH + ".) "))
     return result.stdout.splitlines()[0]
 
+def _get_numpy_include(repository_ctx, python_bin):
+  """Gets the numpy include path."""
+  return _execute(repository_ctx,
+                  [python_bin, "-c",
+                   'from __future__ import print_function;' +
+                   'import numpy;' +
+                   ' print(numpy.get_include());'],
+                  error_msg="Problem getting numpy include path.",
+                  error_details="Is numpy installed?").stdout.splitlines()[0]
 
 def _python_repository_impl(repository_ctx):
     """Creates the repository containing files set up to build with Python."""
@@ -235,6 +244,7 @@ def _python_repository_impl(repository_ctx):
     python_lib = _get_python_lib(repository_ctx, python_bin)
     _check_python_lib(repository_ctx, python_lib)
     python_include = _get_python_include(repository_ctx, python_bin)
+    numpy_include = _get_numpy_include(repository_ctx, python_bin) + '/numpy'
     python_include_rule = _symlink_genrule_for_dir(
         repository_ctx, python_include, 'python_include', 'python_include')
     python_import_lib_genrule = ""
@@ -250,9 +260,12 @@ def _python_repository_impl(repository_ctx):
         python_import_lib_genrule = _symlink_genrule_for_dir(
             repository_ctx, None, '', 'python_import_lib',
             [python_import_lib_src], [python_import_lib_name])
+    numpy_include_rule = _symlink_genrule_for_dir(
+        repository_ctx, numpy_include, 'numpy_include/numpy', 'numpy_include')
     _tpl(repository_ctx, "python", {
         "%{PYTHON_INCLUDE_GENRULE}": python_include_rule,
         "%{PYTHON_IMPORT_LIB_GENRULE}": python_import_lib_genrule,
+        "%{NUMPY_INCLUDE_GENRULE}": numpy_include_rule,
     })
 
 
@@ -276,11 +289,12 @@ def _is_subpath_of(full, root):
 
 
 def _path_in_package(my_ctx, path):
-    rpath = _subpath(path, my_ctx.build_dir_path)
-    if not _is_subpath_of(rpath, my_ctx.pack_dir_name):
+    path_in_build_dir = _subpath(path, my_ctx.build_dir_path)
+    if not _is_subpath_of(path_in_build_dir, my_ctx.src_pack_dir_name):
         fail('All py_package files must be located in {}'.format(
-             my_ctx.build_dir_path + '/' + my_ctx.pack_dir_name))
-    return rpath
+             my_ctx.build_dir_path + '/' + my_ctx.src_pack_dir_name))
+    path_in_root_dir = _subpath(path_in_build_dir, my_ctx.src_pack_dir_name)
+    return my_ctx.dest_pack_dir_name + '/' + path_in_root_dir
 
 
 def _copy_to_package(my_ctx, file):
@@ -297,12 +311,13 @@ def _copy_to_package(my_ctx, file):
 def _py_package_impl(ctx):
     my_ctx = struct(
         actions = ctx.actions,
-        pack_dir_name = ctx.attr.name,
+        src_pack_dir_name = ctx.attr.root,
+        dest_pack_dir_name = ctx.attr.name,
         build_dir_path = _parent_path(ctx.build_file_path),
     )
     files = [ _copy_to_package(my_ctx, src)
               for src in ctx.files.srcs ]
-    return DefaultInfo(files = depset(files + ctx.files.deps))
+    return DefaultInfo(files = depset(files))
 
 
 # Adapted with modifications from
@@ -365,9 +380,6 @@ py_package = rule(
             mandatory = True,
             allow_files = True,
         ),
-        'deps': attr.label_list(
-            mandatory = True,
-            allow_files = True,
-        ),
+        'root': attr.string(),
     },
 )

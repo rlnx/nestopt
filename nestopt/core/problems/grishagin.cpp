@@ -3,6 +3,7 @@
 #include <cmath>
 #include <string>
 #include <stdexcept>
+#include <cstdio>
 
 namespace nestopt {
 namespace core {
@@ -234,7 +235,7 @@ Grishagin::Grishagin(int number) : number_(number) {
    }
 
    grishagin::randomize(number_, COEFFICIENTS_DIM,
-                        icnf_, af_, bf_, cf_, cf_);
+                        icnf_, af_, bf_, cf_, df_);
 }
 
 Scalar Grishagin::Compute(const Vector &x) const {
@@ -270,11 +271,11 @@ Scalar Grishagin::Compute(const Vector &x) const {
    Scalar sum_x = 0;
    Scalar sum_y = 0;
    for (int i = 0; i < COEFFICIENTS_DIM; i++) {
-      const double csx_i = csx[i];
-      const double snx_i = snx[i];
+      const Scalar csx_i = csx[i];
+      const Scalar snx_i = snx[i];
       for (int j = 0; j < COEFFICIENTS_DIM; j++) {
-         const double snx_i_sny_i = snx_i * sny[j];
-         const double csx_i_csy_j = csx_i * csy[j];
+         const Scalar snx_i_sny_i = snx_i * sny[j];
+         const Scalar csx_i_csy_j = csx_i * csy[j];
          sum_x += af_[i * COEFFICIENTS_DIM + j] * snx_i_sny_i +
                   bf_[i * COEFFICIENTS_DIM + j] * csx_i_csy_j;
          sum_y += cf_[i * COEFFICIENTS_DIM + j] * snx_i_sny_i -

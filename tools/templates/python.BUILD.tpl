@@ -24,6 +24,12 @@ cc_library(
     includes=["python_include"],
 )
 
+cc_library(
+    name = "numpy_headers",
+    hdrs = [":numpy_include"],
+    includes = ["numpy_include"],
+)
+
 config_setting(
     name="windows",
     values={"cpu": "x64_windows"},
@@ -32,3 +38,4 @@ config_setting(
 
 %{PYTHON_INCLUDE_GENRULE}
 %{PYTHON_IMPORT_LIB_GENRULE}
+%{NUMPY_INCLUDE_GENRULE}
