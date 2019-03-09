@@ -11,7 +11,7 @@ _PYTHON_LIB_PATH = "PYTHON_LIB_PATH"
 
 def _tpl(repository_ctx, tpl, substitutions={}):
     repository_ctx.template("BUILD",
-                            Label("@//tools/templates:%s.BUILD.tpl" % tpl),
+                            Label("@//bazel/python:%s.BUILD.tpl" % tpl),
                             substitutions)
 
 
@@ -268,118 +268,11 @@ def _python_repository_impl(repository_ctx):
         "%{NUMPY_INCLUDE_GENRULE}": numpy_include_rule,
     })
 
-
-def _parent_path(path):
-    return path.rsplit('/', 1)[0]
-
-
-def _subpath(full, root):
-    root = root.strip('/') + '/'
-    full = full.strip('/') + '/'
-    len_root = len(root)
-    if (len_root <= len(full) and
-        full[:len_root] == root):
-        return full[len_root:].rstrip('/')
-    return full.rstrip('/')
-
-
-def _is_subpath_of(full, root):
-    root = root.strip('/') + '/'
-    return full[:len(root)] == root
-
-
-def _path_in_package(my_ctx, path):
-    path_in_build_dir = _subpath(path, my_ctx.build_dir_path)
-    if not _is_subpath_of(path_in_build_dir, my_ctx.src_pack_dir_name):
-        fail('All py_package files must be located in {}'.format(
-             my_ctx.build_dir_path + '/' + my_ctx.src_pack_dir_name))
-    path_in_root_dir = _subpath(path_in_build_dir, my_ctx.src_pack_dir_name)
-    return my_ctx.dest_pack_dir_name + '/' + path_in_root_dir
-
-
-def _copy_to_package(my_ctx, file):
-    path_in_pack = _path_in_package(my_ctx, file.short_path)
-    file_copy = my_ctx.actions.declare_file(path_in_pack)
-    my_ctx.actions.run_shell(
-        inputs  = [ file ],
-        outputs = [ file_copy ],
-        command = "cp {} {}".format(file.path, file_copy.path)
-    )
-    return file_copy
-
-
-def _py_package_impl(ctx):
-    my_ctx = struct(
-        actions = ctx.actions,
-        src_pack_dir_name = ctx.attr.root,
-        dest_pack_dir_name = ctx.attr.name,
-        build_dir_path = _parent_path(ctx.build_file_path),
-    )
-    files = [ _copy_to_package(my_ctx, src)
-              for src in ctx.files.srcs ]
-    return DefaultInfo(files = depset(files))
-
-
-# Adapted with modifications from
-# tensorflow/tensorflow/core/platform/default/build_config.bzl
-def pyx_binaries(name, pyx_srcs=[], pyx_deps=[], cc_deps=[], **kwargs):
-    """Compiles a group of .pyx / .pxd files.
-
-    First runs Cython to create .cpp files for each input .pyx. Then builds a
-    shared object for each, passing "deps" to each cc_binary rule. Finally,
-    creates a filegroup rule with the native python extensions.
-    Args:
-        name: Name for the rule.
-        deps: C/C++ dependencies of the Cython (e.g. Numpy headers).
-        srcs: .pyx, or .pxd files to either compile or pass through.
-    """
-    for src in pyx_srcs:
-        if not src.endswith('.pyx'):
-            fail("Only .pyx files are allowed in 'srcs'")
-
-    stems = [ x[:-3] for x in pyx_srcs ]
-    pybins = [ x + 'so' for x in stems ]
-
-    for stem in stems:
-        native.genrule(
-            name = stem + 'cythonize',
-            srcs = [ stem + 'pyx' ],
-            outs = [ stem + 'cpp' ],
-            cmd = ('PYTHONHASHSEED=0 python -m cython -X language_level=3 ' +
-                   '--cplus $(SRCS) --output-file $(OUTS)'),
-            tools = pyx_deps,
-        )
-        native.cc_binary(
-            name = stem + 'so',
-            srcs = [ stem + 'cpp' ],
-            deps = cc_deps,
-            linkshared = 1,
-        )
-
-    native.filegroup(
-        name = name,
-        srcs = pybins,
-        **kwargs
-    )
-
-
-python_repository = repository_rule(
+python_repo = repository_rule(
     implementation=_python_repository_impl,
     environ=[
         _BAZEL_SH,
         _PYTHON_BIN_PATH,
         _PYTHON_LIB_PATH,
     ],
-)
-
-
-py_package = rule(
-    implementation = _py_package_impl,
-    attrs = {
-        'srcs': attr.label_list(
-            mandatory = True,
-            allow_files = True,
-        ),
-        'root': attr.string(),
-    },
 )

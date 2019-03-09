@@ -1,3 +1,4 @@
+
 cc_library(
     name = "headers",
     hdrs = glob([ "**/*.hpp" ]),
@@ -13,7 +14,7 @@ cc_library(
 
 cc_test(
     name = "intervals_test",
-    srcs = [ "intervals_test.cpp" ],
+    srcs = [ "core/intervals_test.cpp" ],
     deps = [
         "@gtest//:gtest",
         "@gtest//:gtest_main",

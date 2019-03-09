@@ -38,10 +38,12 @@ class Grishagin(object):
         x = np.asarray(x, dtype=nn.float_t)
         return self._native.compute(x)
 
+    @property
     def minimum(self):
         return self._native.minimum()
 
-    def minimizer(self)
+    @property
+    def minimizer(self):
         return self._native.minimizer()
 
     @property
