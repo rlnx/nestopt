@@ -1,15 +1,25 @@
+# pylint: disable=no-name-in-module
 import numpy as np
 from .native import nestopt as nn
 
+class BorderFunction(object):
+    def __call__(self, level: int, x: np.ndarray) -> float:
+        pass
+
+class ConstantBorderFunction(BorderFunction):
+    def __init__(self, bound):
+        assert not bound is None
+        self._bound = np.asarray(bound, dtype=nn.float_t)
+        assert len(self._bound.shape) == 1
+
+    def __call__(self, level, x):
+        return self._bound[level]
+
 class Domain(object):
-    def __init__(self, left_bound, right_bound):
+    def __init__(self, left_bound: BorderFunction,
+                       right_bound: BorderFunction):
         assert not left_bound is None
         assert not right_bound is None
-        left_bound = np.asarray(left_bound, dtype=nn.float_t)
-        right_bound = np.asarray(right_bound, dtype=nn.float_t)
-        assert len(left_bound.shape) == 1
-        assert len(right_bound.shape) == 1
-        assert len(left_bound) == len(right_bound)
         self._left_bound = left_bound
         self._right_bound = right_bound
 
@@ -23,8 +33,9 @@ class Domain(object):
 
     @staticmethod
     def square(dim, a=0.0, b=1.0):
-        return Domain(np.full(dim, a, dtype=nn.float_t),
-                      np.full(dim, b, dtype=nn.float_t))
+        left = ConstantBorderFunction(np.full(dim, a, dtype=nn.float_t))
+        right = ConstantBorderFunction(np.full(dim, b, dtype=nn.float_t))
+        return Domain(left, right)
 
 
 class GrishaginProblem(object):

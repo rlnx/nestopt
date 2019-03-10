@@ -15,6 +15,7 @@ class TestNestedSolver(unittest.TestCase):
         problem = nopt.GrishaginProblem(n)
         result = nopt.minimize('nested', problem,
                                 r=3.7, tol=0.01, nested_max_iters=100)
+        # pylint: disable=no-member
         diff = minimizers_diff(problem.minimizer, result.minimizer)
         self.assertLess(diff, 0.01, 'Nested solver does not' +
                         ' converge on Grishagin #{}'.format(n))

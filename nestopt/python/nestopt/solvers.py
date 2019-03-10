@@ -30,12 +30,12 @@ class NestedSolver(object):
         problem = self._problem
         if level == problem.dimension:
             return self._compute_leaf()
-        l_y = problem.domain.left[level]
-        r_y = problem.domain.right[level]
+        l_y = problem.domain.left(level, self._x)
+        r_y = problem.domain.right(level, self._x)
         l_z = self._compute_subproblem(level, l_y)
         r_z = self._compute_subproblem(level, r_y)
         iset = IntervalSet((l_y, l_z), (r_y, r_z), r=self.r)
-        for i in range(0, self.nested_max_iters):
+        for _ in range(0, self.nested_max_iters):
             y = iset.next()
             z = self._compute_subproblem(level, y)
             d = iset.push((y, z))
@@ -54,7 +54,6 @@ class NestedSolver(object):
             self._min_z = z
         self._total_evals += 1
         return z
-
 
 def minimize(solver, problem, **kwargs):
     solver_types = {
