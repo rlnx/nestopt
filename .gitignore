@@ -1,2 +1,5 @@
 # Bazel output
 /bazel-*
+
+# IDE specific files
+/.vscode

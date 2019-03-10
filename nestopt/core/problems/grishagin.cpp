@@ -294,7 +294,7 @@ Vector Grishagin::Minimizer() const {
    const int idx = 2 * (number_ - 1);
    const Scalar x = grishagin::MINIMIZERS[idx];
    const Scalar y = grishagin::MINIMIZERS[idx + 1];
-   return { x, y };
+   return Vector::Copy({ x, y });
 }
 
 } // namespace problems

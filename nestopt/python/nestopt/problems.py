@@ -27,7 +27,7 @@ class Domain(object):
                       np.full(dim, b, dtype=nn.float_t))
 
 
-class Grishagin(object):
+class GrishaginProblem(object):
     def __init__(self, number):
         self._dimension = 2
         self._number = number

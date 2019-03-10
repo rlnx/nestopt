@@ -14,8 +14,9 @@ cc_library(
 
 cc_test(
     name = "intervals_test",
-    srcs = [ "core/intervals_test.cpp" ],
+    srcs = [ "intervals_test.cpp" ],
     deps = [
+        ":nestopt_core",
         "@gtest//:gtest",
         "@gtest//:gtest_main",
     ],

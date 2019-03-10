@@ -1,12 +1,14 @@
 #ifndef NESTOPT_CORE_TYPES_HPP_
 #define NESTOPT_CORE_TYPES_HPP_
 
-#include <vector>
-#include <cstddef>
-#include <utility>
-#include <initializer_list>
-
 #include <cstdio>
+#include <cstddef>
+
+#include <initializer_list>
+#include <memory>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 #ifdef _NDEBUG
 #define NESTOPT_DEBUG 0
@@ -27,13 +29,8 @@ namespace core {
 using Scalar = double;
 using Size   = std::size_t;
 
-enum class MemoryOwnership {
-  self,
-  user
-};
-
 template<typename T>
-class Allocator {
+class DefaultAllocator {
 public:
   T *allocate(Size size) {
     return new T[size];
@@ -44,10 +41,72 @@ public:
   }
 };
 
-class Vector {
+template<typename T>
+class Buffer {
 public:
-  typedef Scalar            value_type;
-  typedef Allocator<Scalar> allocator_type;
+  virtual ~Buffer() { }
+  virtual T *data() = 0;
+  virtual Size size() = 0;
+};
+template<typename T>
+using UniqueBuffer = std::unique_ptr<Buffer<T>>;
+
+template<typename BufferType, typename ... Args>
+std::unique_ptr<BufferType> MakeUniqueBuffer(Args &&...args) {
+  return std::unique_ptr<BufferType>(new BufferType(std::forward<Args>(args)...));
+}
+
+template<typename T, typename Allocator = DefaultAllocator<T>>
+class OwnBuffer : public Buffer<T> {
+public:
+  explicit OwnBuffer(Size size, const Allocator &allocator = Allocator())
+    : allocator_(allocator),
+      data_(allocator_.allocate(size)),
+      size_(size) { }
+
+  ~OwnBuffer() {
+    allocator_.deallocate(data_);
+  }
+
+  T *data() override {
+    return data_;
+  }
+
+  Size size() override {
+    return size_;
+  }
+
+private:
+  Allocator allocator_;
+  T *data_;
+  Size size_;
+};
+
+template<typename T>
+class ViewBuffer : public Buffer<T> {
+public:
+  explicit ViewBuffer(T *data, Size size)
+    : data_(data),
+      size_(size) { }
+
+  T *data() override {
+    return data_;
+  }
+
+  Size size() override {
+    return size_;
+  }
+
+ private:
+  T *data_;
+  Size size_;
+};
+
+template<typename T>
+class VectorBase {
+public:
+  /* STL-compatible type traits */
+  typedef T                 value_type;
   typedef Size              size_type;
   typedef std::ptrdiff_t    difference_type;
   typedef value_type&       reference;
@@ -55,141 +114,107 @@ public:
   typedef value_type*       pointer;
   typedef const pointer     const_pointer;
 
-  static Vector &&Move(Vector &other) {
-    return std::move(other);
-  }
+  VectorBase() = default;
 
-  static Vector View(const Vector &other) {
-    return Vector(other.data(), other.size(),
-                  MemoryOwnership::user);
-  }
+  explicit VectorBase(T *data, Size size)
+    : size_(size),
+      data_(data) { }
 
-  static Vector Copy(const Vector &other) {
-    return Vector(other.data(), other.size(),
-                  MemoryOwnership::self);
-  }
-
-  static Vector View(pointer buffer, size_type size) {
-    return Vector(buffer, size, MemoryOwnership::user);
-  }
-
-  static Vector Copy(const_pointer buffer, size_type size) {
-    return Vector(const_cast<pointer>(buffer), size,
-                  MemoryOwnership::self);
-  }
-
-  Vector()
-    : data_(nullptr),
-      size_(0),
-      memowner_(MemoryOwnership::self) { }
-
-  explicit Vector(size_type size)
-      : data_(nullptr),
-        size_(size),
-        memowner_(MemoryOwnership::self) {
-    data_ = allocator_type().allocate(size);
-  }
-
-  explicit Vector(pointer buffer,
-                  size_type size,
-                  MemoryOwnership owner)
-      : data_(buffer),
-        size_(size),
-        memowner_(owner) {
-    NestoptAssert(owner == MemoryOwnership::user ||
-                  owner == MemoryOwnership::self);
-    if (owner == MemoryOwnership::self) {
-      data_ = CopyOwnData();
-    }
-  }
-
-  Vector(const std::initializer_list<Scalar> &list)
-      : Vector(list.size()) {
-    size_type idx = 0;
-    for (auto x : list) {
-      data_[idx++] = x;
-    }
-  }
-
-  Vector(const Vector &other) = delete;
-
-  Vector(Vector &&other) :
-      data_(other.data_),
-      size_(other.size_),
-      memowner_(other.memowner_) {
-    other.memowner_ = MemoryOwnership::user;
-    other.clean();
-  }
-
-  ~Vector() {
-    clean();
-  }
-
-  Vector &operator=(const Vector &other) = delete;
-
-  Vector &operator=(Vector &&other) {
-    swap(other);
-    other.clean();
-    return *this;
-  }
-
-  size_type size() const {
+  Size size() const {
     return size_;
   }
 
-  pointer data() {
+  T *data() {
     return data_;
   }
 
-  const_pointer data() const {
+  const T *data() const {
     return data_;
   }
 
-  reference at(size_type i) {
+  T &at(Size i) {
     NestoptAssert(i < size_);
     return data_[i];
   }
 
-  const_reference at(size_type i) const {
+  const T &at(Size i) const {
     NestoptAssert(i < size_);
     return data_[i];
   }
 
-  reference operator[](size_type i) {
+  T &operator[](Size i) {
     return at(i);
   }
 
-  const_reference operator[](size_type i) const {
+  const T &operator[](Size i) const {
     return at(i);
-  }
-
-  void clean() {
-    if (memowner_ == MemoryOwnership::self) {
-      allocator_type().deallocate(data_);
-    }
-    size_ = 0;
-    data_ = nullptr;
-  }
-
-  Vector &swap(Vector &other) {
-    std::swap(data_, other.data_);
-    std::swap(size_, other.size_);
-    std::swap(memowner_, other.memowner_);
-    return *this;
   }
 
 private:
-  pointer CopyOwnData() {
-    pointer data_copy = allocator_type().allocate(size_);
-    for (size_type i = 0; i < size_; i++) {
-      data_copy[i] = data_[i];
-    }
-    return data_copy;
+  Size size_ = 0;
+  T *data_ = nullptr;
+};
+
+class Vector : public VectorBase<Scalar> {
+public:
+  typedef VectorBase<Scalar> super;
+
+  static Vector Empty(Size size) {
+    typedef OwnBuffer<Scalar> BufferType;
+    return Vector(MakeUniqueBuffer<BufferType>(size));
   }
 
-  pointer data_;
-  size_type size_;
-  MemoryOwnership memowner_;
+  static Vector Full(Size size, Scalar value) {
+    return Empty(size).Fill(
+      [&](Size i) { return value; }
+    );
+  }
+
+  static Vector Zeros(Size size) {
+    return Full(size, 0.0);
+  }
+
+  static Vector Copy(const std::vector<Scalar> &source) {
+    return Empty(source.size()).Fill(
+      [&](Size i) { return source[i]; }
+    );
+  }
+
+  static Vector Wrap(Scalar *data, Size size) {
+    return Vector(MakeUniqueBuffer<ViewBuffer<Scalar>>(data, size));
+  }
+
+  Vector() = default;
+
+  explicit Vector(UniqueBuffer<Scalar> &&buffer)
+    : super(buffer->data(), buffer->size()),
+      buffer_(std::move(buffer)) { }
+
+  Vector View(Size offset, Size subsize) const {
+    NestoptAssert( offset + subsize <= size() );
+    return Wrap(const_cast<Scalar *>(data() + offset), subsize);
+  }
+
+  template <typename Body>
+  Vector &&For(const Body &body) {
+    for (Size i = 0; i < size(); i++) {
+      body(i);
+    }
+    return std::move(*this);
+  }
+
+  template <typename Body>
+  Vector &&ForEach(const Body &body) {
+    return For([&](Size i) { body(at(i)); });
+  }
+
+  template <typename Body>
+  Vector &&Fill(const Body &body) {
+    return For([&](Size i) { at(i) = body(i); });
+  }
+
+private:
+  UniqueBuffer<Scalar> buffer_;
 };
 
 } // namespace nestopt
