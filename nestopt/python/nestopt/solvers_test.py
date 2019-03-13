@@ -37,7 +37,7 @@ class TestAdaptiveTask(unittest.TestCase):
         ref_result = nopt.minimize('nested', problem, r=params.r, tol=params.tol,
                                    nested_max_iters=params.nested_init_max_iters)
         task = nopt.AdaptiveTask(ctx, np.empty(0))
-        self.assertAlmostEqual(ref_result.minimum, task.min)
+        self.assertAlmostEqual(ref_result.minimum, task.minimum)
 
 if __name__ == '__main__':
     unittest.main()

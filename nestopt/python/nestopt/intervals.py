@@ -12,5 +12,5 @@ class IntervalSet(object):
     def next(self):
         return self._native.next()
 
-    def min(self):
+    def minimum(self):
         return self._native.min()

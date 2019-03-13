@@ -51,7 +51,7 @@ class NestedSolver(object):
         iset = IntervalSet((l_y, l_z), (r_y, r_z), r=self.r)
         compute = lambda y: self._compute_subproblem(level, y)
         _nested_loop(iset, self.nested_max_iters, self.tol, compute)
-        return iset.min()
+        return iset.minimum()
 
     def _compute_subproblem(self, level, y):
         self._x[level] = y
@@ -100,7 +100,7 @@ class AdaptiveTask(object):
         else:
             task = AdaptiveTask(ctx, self.args(x))
             ctx.queue.push(task)
-            return task.min
+            return task.minimum
 
     def _init_on_bound(self, ctx, bound):
         x = bound(self.level, self._fixed_args[:-1])
@@ -115,8 +115,8 @@ class AdaptiveTask(object):
         return len(self._fixed_args) - 1
 
     @property
-    def min(self):
-        return self._iset.min()
+    def minimum(self):
+        return self._iset.minimum()
 
 
 class AdaptiveSolver(object):
