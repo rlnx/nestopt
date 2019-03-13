@@ -38,6 +38,19 @@ class Domain(object):
         return Domain(left, right)
 
 
+class Problem(object):
+    def compute(self, x) -> float:
+        pass
+
+    @property
+    def dimension(self) -> int:
+        pass
+
+    @property
+    def domain(self) -> Domain:
+        pass
+
+
 class GrishaginProblem(object):
     def __init__(self, number):
         self._dimension = 2

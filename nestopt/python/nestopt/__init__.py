@@ -1,6 +1,10 @@
 from .solvers import (
     SolverResult,
     NestedSolver,
+    AdaptiveSolver,
+    AdaptiveTask,
+    AdaptiveTaskQueue,
+    AdaptiveTaskContext,
     minimize,
 )
 
