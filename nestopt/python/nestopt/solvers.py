@@ -18,6 +18,7 @@ class SolverResult(object):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
 
+
 class NestedSolver(object):
     """Nested solver"""
     def __init__(self, r=2.0, tol=0.01, nested_max_iters=30):
@@ -64,24 +65,31 @@ class NestedSolver(object):
         return z
 
 
-class AdaptiveTaskQueue(object):
-    def __init__(self):
-        self._queue = []
-
-    def push(self, task):
-        self._queue.append(task)
-
 class AdaptiveTaskContext(object):
     def __init__(self, problem, queue, params):
         self.problem = problem
         self.queue = queue
         self.params = params
+        self.minimum = np.inf
+        self.total_evals = 0
+
+    def update_minimum(self, minimum, minimizer):
+        if minimum < self.minimum:
+            self.minimum = minimum
+            self.minimizer = minimizer.copy()
+        self.total_evals += 1
+
 
 class AdaptiveTask(object):
     def __init__(self, ctx: AdaptiveTaskContext,
                        fixed_args: np.ndarray):
         self._fixed_args = np.append(fixed_args, [0])
         self._init(ctx)
+
+    def iterate(self, ctx):
+        y = self._iset.next()
+        z = self._compute(ctx, y)
+        return self._iset.push((y, z))
 
     def _init(self, ctx):
         iset = IntervalSet(self._init_on_bound(ctx, ctx.problem.domain.left),
@@ -94,7 +102,9 @@ class AdaptiveTask(object):
 
     def _compute(self, ctx, x):
         if self.level + 1 == ctx.problem.dimension:
-            return ctx.problem.compute(self.args(x))
+            z = ctx.problem.compute(self.args(x))
+            ctx.update_minimum(z, self.args(x))
+            return z
         else:
             task = AdaptiveTask(ctx, self.args(x))
             ctx.queue.push(task)
@@ -116,6 +126,29 @@ class AdaptiveTask(object):
     def minimum(self):
         return self._iset.minimum()
 
+    @property
+    def weight(self):
+        return self._iset.weight()
+
+    def __lt__(self, other):
+        return self.weight > other.weight
+
+
+class AdaptiveTaskQueue(object):
+    def __init__(self):
+        self._heap = []
+
+    def push(self, task: AdaptiveTask):
+        from heapq import heappush
+        heappush(self._heap, task)
+
+    def pop(self) -> AdaptiveTask:
+        from heapq import heappop
+        return heappop(self._heap)
+
+    def empty(self):
+        return len(self._heap) == 0
+
 
 class AdaptiveSolver(object):
     def __init__(self, r=2.0, tol=0.01, nested_max_iters=30,
@@ -127,19 +160,42 @@ class AdaptiveSolver(object):
         self.max_iters = max_iters
 
     def solve(self, problem: Problem) -> SolverResult:
-        pass
+        queue = AdaptiveTaskQueue()
+        ctx = AdaptiveTaskContext(problem, queue, self)
+        root = AdaptiveTask(ctx, np.empty(0))
+        queue.push(root)
+        return self._solve(ctx, root)
+
+    def _solve(self, ctx, root):
+        iter_counter = 0
+        max_iters = self._max_iters(ctx.problem)
+        while not ctx.queue.empty():
+            task = ctx.queue.pop()
+            delta = task.iterate(ctx)
+            if delta >= self.tol:
+                ctx.queue.push(task)
+            elif task == root:
+                break
+            iter_counter += 1
+            if iter_counter >= max_iters:
+                break
+        return SolverResult(
+            minimizer=ctx.minimizer,
+            minimum=ctx.minimum,
+            total_evals=ctx.total_evals,
+        )
 
     def _max_iters(self, problem):
-        return self.max_iters or self._default_max_iters(problem)
+        return int(self.max_iters or self._default_max_iters(problem))
 
     def _default_max_iters(self, problem):
         return (self.nested_max_iters / 2) ** problem.dimension
 
 
 def minimize(solver, problem, **kwargs):
-    solver_types = {
-        'nested': NestedSolver,
-        'adaptive': AdaptiveSolver,
-    }
+    solver_types = dict(
+        nested = NestedSolver,
+        adaptive = AdaptiveSolver,
+    )
     solver = solver_types[solver](**kwargs)
     return solver.solve(problem)

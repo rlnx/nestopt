@@ -55,6 +55,9 @@ cdef class PyIntervalSet(object):
     def min(self):
         return self.ptr().Min()
 
+    def best_weight(self):
+        return self.ptr().BestWeight()
+
     # cdef BestLength()
     # cdef BestWeight()
     #     Size size()

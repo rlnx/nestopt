@@ -12,5 +12,8 @@ class IntervalSet(object):
     def next(self):
         return self._native.next()
 
+    def weight(self):
+        return self._native.best_weight()
+
     def minimum(self):
         return self._native.min()
