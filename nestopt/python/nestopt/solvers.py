@@ -1,9 +1,7 @@
-import numba
 import numpy as np
 from .intervals import IntervalSet
 from .problems import Problem
 
-# @numba.jit(nogil=True)
 def _nested_loop(iset: IntervalSet,
                  max_iters: int,
                  epsilon: float,
