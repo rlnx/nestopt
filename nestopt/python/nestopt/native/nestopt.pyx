@@ -31,6 +31,7 @@ cdef _to_ndarray(Vector &&vector):
 cdef Vector _to_vector_view(np.ndarray[Scalar, mode='c', ndim=1] ndarray):
     return Vector.Wrap(<Scalar *> ndarray.data, ndarray.size)
 
+
 cdef class PyIntervalSet(object):
     cdef unique_ptr[DefaultIntervalSet] c_set
     def __cinit__(self, reliability):
@@ -58,10 +59,6 @@ cdef class PyIntervalSet(object):
     def best_weight(self):
         return self.ptr().BestWeight()
 
-    # cdef BestLength()
-    # cdef BestWeight()
-    #     Size size()
-    #     bool empty()
 
 cdef class PyGrishaginProblem(object):
     cdef unique_ptr[GrishaginProblem] c_problem
