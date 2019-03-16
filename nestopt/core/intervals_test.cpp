@@ -46,6 +46,11 @@ public:
       _xx(Vector::Empty(capacity + 1)),
       _zz(Vector::Empty(capacity + 1)) { }
 
+  void Reset(const Interval &interval) {
+    return PushFirst(interval.x_left(), interval.z_left(),
+                     interval.x_right(), interval.z_right());
+  }
+
   void PushFirst(Scalar l, Scalar lvalue,
                  Scalar r, Scalar rvalue) {
     NestoptAssert( _size == 0 );
@@ -123,8 +128,8 @@ Vector GenerateSequence(IntervalSetType &&iset, Size trials_num) {
   std::mt19937 random_engine(seed);
   auto init_values = utils::GenerateUniform(random_engine, 2,
                                             value_min, value_max);
-  iset.PushFirst(interval_beg, init_values[0],
-                 interval_end, init_values[1]);
+  iset.Reset({ interval_beg, init_values[0],
+              interval_end, init_values[1] });
 
   auto values = utils::GenerateUniform(random_engine, trials_num,
                                        value_min, value_max);

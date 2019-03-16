@@ -2,40 +2,32 @@
 import numpy as np
 from .native import nestopt as nn
 
-class BorderFunction(object):
-    def __call__(self, level: int, x: np.ndarray) -> float:
+class ComputableBound(object):
+    def __call__(self, level: int, x: np.ndarray) -> list:
         pass
 
-class ConstantBorderFunction(BorderFunction):
-    def __init__(self, bound):
-        assert not bound is None
-        self._bound = np.asarray(bound, dtype=nn.float_t)
-        assert len(self._bound.shape) == 1
+
+class ConstantBound(ComputableBound):
+    def __init__(self, left_bound, right_bound):
+        self.left_bound = left_bound
+        self.right_bound = right_bound
 
     def __call__(self, level, x):
-        return self._bound[level]
+        return [ self._single_interval(level) ]
+
+    def _single_interval(self, level):
+        return (self.left_bound[level], self.right_bound[level])
+
 
 class Domain(object):
-    def __init__(self, left_bound: BorderFunction,
-                       right_bound: BorderFunction):
-        assert not left_bound is None
-        assert not right_bound is None
-        self._left_bound = left_bound
-        self._right_bound = right_bound
-
-    @property
-    def left(self):
-        return self._left_bound
-
-    @property
-    def right(self):
-        return self._right_bound
+    def __init__(self, bound: ComputableBound):
+        self.bound = bound
 
     @staticmethod
     def square(dim, a=0.0, b=1.0):
-        left = ConstantBorderFunction(np.full(dim, a, dtype=nn.float_t))
-        right = ConstantBorderFunction(np.full(dim, b, dtype=nn.float_t))
-        return Domain(left, right)
+        left_bound = np.full(dim, a, dtype=nn.float_t)
+        right_bound = np.full(dim, b, dtype=nn.float_t)
+        return Domain(ConstantBound(left_bound, right_bound))
 
 
 class Problem(object):
@@ -51,7 +43,7 @@ class Problem(object):
         pass
 
 
-class GrishaginProblem(object):
+class GrishaginProblem(Problem):
     def __init__(self, number):
         self._dimension = 2
         self._number = number

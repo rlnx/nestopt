@@ -7,6 +7,27 @@
 namespace nestopt {
 namespace core {
 
+class Interval {
+public:
+  Interval(Scalar x_left, Scalar z_left,
+           Scalar x_right, Scalar z_right)
+    : x_left_(x_left),
+      z_left_(z_left),
+      x_right_(x_right),
+      z_right_(z_right) { }
+
+  Scalar x_left() const { return x_left_; }
+  Scalar z_left() const { return z_left_; }
+  Scalar x_right() const { return x_right_; }
+  Scalar z_right() const { return z_right_; }
+
+private:
+  Scalar x_left_;
+  Scalar z_left_;
+  Scalar x_right_;
+  Scalar z_right_;
+};
+
 template<Size SIZE>
 class IntervalSet {
 public:
@@ -17,18 +38,31 @@ public:
     NestoptAssert( r_ > 1.0 );
   }
 
-  Scalar PushFirst(Scalar xl, Scalar zl,
-                   Scalar xr, Scalar zr) {
-    NestoptAssert( n_ == 0 );
-    NestoptAssert( r_ > 1.0 );
-    xl_[0] = xl; zl_[0] = zl;
-    xr_[0] = xr; zr_[0] = zr;
-    n_++;
+  Scalar Reset(const Interval &interval) {
+    return Reset(std::vector<Interval>({ interval }));
+  }
 
-    m_ = NormalizeM(Slope(0));
-    UpdateWeight(0);
+  Scalar Reset(const std::vector<Interval> &intervals) {
+    NestoptAssert( intervals.size() > 0 );
+    NestoptAssert( intervals.size() <= SIZE );
 
-    min_z_ = utils::Min(zl, zr);
+    Scalar m = 0;
+    Scalar z = utils::Infinity();
+
+    for (Size i = 0; i < intervals.size(); i++) {
+      xl_[i] = intervals[i].x_left();
+      zl_[i] = intervals[i].z_left();
+      xr_[i] = intervals[i].x_right();
+      zr_[i] = intervals[i].z_right();
+      m = utils::Max(m, Slope(i));
+      z = utils::Min(z, zl_[i], zr_[i]);
+    }
+
+    n_ = intervals.size();
+    m_ = NormalizeM(m);
+    min_z_ = z;
+
+    UpdateWeights();
     return BestLength();
   }
 

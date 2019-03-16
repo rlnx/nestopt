@@ -43,13 +43,10 @@ class NestedSolver(object):
         problem = self._problem
         if level == problem.dimension:
             return self._compute_leaf()
-        l_y = problem.domain.left(level, self._x)
-        r_y = problem.domain.right(level, self._x)
-        l_z = self._compute_subproblem(level, l_y)
-        r_z = self._compute_subproblem(level, r_y)
-        iset = IntervalSet((l_y, l_z), (r_y, r_z), r=self.r)
-        compute = lambda y: self._compute_subproblem(level, y)
-        _nested_loop(iset, self.nested_max_iters, self.tol, compute)
+        compute_f = lambda y: self._compute_subproblem(level, y)
+        intervals = problem.domain.bound(level, self._x)
+        iset = IntervalSet(intervals, f=compute_f, r=self.r)
+        _nested_loop(iset, self.nested_max_iters, self.tol, compute_f)
         return iset.minimum()
 
     def _compute_subproblem(self, level, y):
@@ -83,7 +80,7 @@ class AdaptiveTaskContext(object):
 class AdaptiveTask(object):
     def __init__(self, ctx: AdaptiveTaskContext,
                        fixed_args: np.ndarray):
-        self._fixed_args = np.append(fixed_args, [0])
+        self._x = np.append(fixed_args, [0])
         self._init(ctx)
 
     def iterate(self, ctx):
@@ -92,12 +89,11 @@ class AdaptiveTask(object):
         return self._iset.push((y, z))
 
     def _init(self, ctx):
-        iset = IntervalSet(self._init_on_bound(ctx, ctx.problem.domain.left),
-                           self._init_on_bound(ctx, ctx.problem.domain.right),
-                           r=ctx.params.r)
-        compute = lambda y: self._compute(ctx, y)
+        compute_f = lambda y: self._compute(ctx, y)
+        intervals = ctx.problem.domain.bound(self.level, self._x)
+        iset = IntervalSet(intervals, f=compute_f, r=ctx.params.r)
         _nested_loop(iset, ctx.params.nested_init_max_iters,
-                     ctx.params.tol, compute)
+                     ctx.params.tol, compute_f)
         self._iset = iset
 
     def _compute(self, ctx, x):
@@ -111,16 +107,16 @@ class AdaptiveTask(object):
             return task.minimum
 
     def _init_on_bound(self, ctx, bound):
-        x = bound(self.level, self._fixed_args[:-1])
+        x = bound(self.level, self._x[:-1])
         return x, self._compute(ctx, x)
 
     def args(self, x):
-        self._fixed_args[-1] = x
-        return self._fixed_args
+        self._x[-1] = x
+        return self._x
 
     @property
     def level(self):
-        return len(self._fixed_args) - 1
+        return len(self._x) - 1
 
     @property
     def minimum(self):

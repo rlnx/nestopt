@@ -40,11 +40,13 @@ cdef class PyIntervalSet(object):
     cdef DefaultIntervalSet *ptr(self):
         return self.c_set.get()
 
-    def push_first(self, tuple p_1, tuple p_2):
-        assert len(p_1) == 2
-        assert len(p_2) == 2
-        return self.ptr().PushFirst(p_1[0], p_1[1],
-                                    p_2[0], p_2[1])
+    def reset(self, list py_intervals):
+        cdef vector[Interval] intervals
+        intervals.reserve(len(py_intervals))
+        for py_interval in py_intervals:
+            beg, end = py_interval[0], py_interval[1]
+            intervals.emplace_back(beg[0], beg[1], end[0], end[1])
+        return self.ptr().Reset(intervals)
 
     def push(self, tuple p):
         assert len(p) == 2

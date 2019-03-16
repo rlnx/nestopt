@@ -10,12 +10,17 @@ namespace nestopt {
 namespace core {
 namespace utils {
 
-template<typename T>
+template <typename T>
 inline T Min(const T &x, const T &y) {
   return (x > y) ? y : x;
 }
 
-template<typename T>
+template <typename T>
+inline T Min(const T &x, const T &y, const T &z) {
+  return Min(x, Min(y, z));
+}
+
+template <typename T>
 inline T Max(const T &x, const T &y) {
   return (x > y) ? x : y;
 }
