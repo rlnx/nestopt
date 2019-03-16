@@ -41,7 +41,7 @@ class TestAdaptiveTask(unittest.TestCase):
 
 class TestAdaptiveSolver(unittest.TestCase):
     @run_on_grishagin
-    def test_convergence_on_grishagin(self, n=97):
+    def test_convergence_on_grishagin(self, n=1):
         problem = nopt.GrishaginProblem(n)
         result = nopt.minimize('adaptive', problem,
                                r=4.0, tol=0.01,
