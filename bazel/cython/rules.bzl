@@ -31,6 +31,7 @@ def pyx_library(name, pyx_srcs=[], pyx_deps=[], cc_deps=[], **kwargs):
             name = stem + 'so',
             srcs = [ stem + 'cpp' ],
             deps = cc_deps,
+            linkopts = [ '-Wl,-undefined,dynamic_lookup' ],
             linkshared = 1,
         )
 

@@ -28,15 +28,20 @@ class TestNestedSolver(unittest.TestCase):
 class TestAdaptiveTask(unittest.TestCase):
     @run_on_grishagin
     def test_init_works_as_nested_on_grishagin(self, n=1):
-        Params = namedtuple('Params', ['r', 'tol', 'nested_init_max_iters'])
-        params = Params(r=3.5, tol=0.01, nested_init_max_iters=100)
+        from nestopt.solvers import (
+            AdaptiveTask,
+            AdaptiveTaskQueue,
+            AdaptiveTaskContext
+        )
+        Params = namedtuple('Params', ['r', 'tol', 'nested_init_max_iters', 'save_trials'])
+        params = Params(r=3.5, tol=0.01, nested_init_max_iters=100, save_trials=False)
         problem = nopt.GrishaginProblem(n)
-        queue = nopt.AdaptiveTaskQueue()
-        ctx = nopt.AdaptiveTaskContext(problem, queue, params)
+        queue = AdaptiveTaskQueue()
+        ctx = AdaptiveTaskContext(problem, queue, params)
 
         ref_result = nopt.minimize('nested', problem, r=params.r, tol=params.tol,
                                    nested_max_iters=params.nested_init_max_iters)
-        task = nopt.AdaptiveTask(ctx, np.empty(0))
+        task = AdaptiveTask(ctx, np.empty(0))
         self.assertAlmostEqual(ref_result.minimum, task.minimum)
 
 class TestAdaptiveSolver(unittest.TestCase):

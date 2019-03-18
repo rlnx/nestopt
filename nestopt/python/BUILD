@@ -1,4 +1,5 @@
 load("@//bazel/cython:rules.bzl", "pyx_library")
+load("@//bazel/python:rules.bzl", "py_package")
 
 pyx_library(
     name = "nestopt_py",
@@ -19,5 +20,20 @@ py_test(
     main = "nestopt/solvers_test.py",
     srcs = [ "nestopt/solvers_test.py" ],
     deps = [ ":nestopt_py" ],
-    imports = [ "." ]
+    imports = [ "." ],
+)
+
+py_test(
+    name = "test_utils",
+    main = "nestopt/utils_test.py",
+    srcs = [
+        "nestopt/utils.py",
+        "nestopt/utils_test.py",
+    ],
+    imports = [ "." ],
+)
+
+py_package(
+    name = "nestopt",
+    srcs = [ ":nestopt_py" ],
 )

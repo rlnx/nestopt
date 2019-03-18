@@ -1,4 +1,5 @@
 import numpy as np
+from dataclasses import dataclass
 from .intervals import IntervalSet
 from .problems import Problem
 
@@ -69,12 +70,15 @@ class AdaptiveTaskContext(object):
         self.params = params
         self.minimum = np.inf
         self.total_evals = 0
+        self.trials = []
 
     def update_minimum(self, minimum, minimizer):
         if minimum < self.minimum:
             self.minimum = minimum
             self.minimizer = minimizer.copy()
         self.total_evals += 1
+        if self.params.save_trials:
+            self.trials.append(minimizer.copy())
 
 
 class AdaptiveTask(object):
@@ -146,14 +150,14 @@ class AdaptiveTaskQueue(object):
         return len(self._heap) == 0
 
 
+@dataclass
 class AdaptiveSolver(object):
-    def __init__(self, r=2.0, tol=0.01, nested_max_iters=30,
-                 nested_init_max_iters=10, max_iters=None):
-        self.r = r
-        self.tol = tol
-        self.nested_max_iters = nested_max_iters
-        self.nested_init_max_iters = nested_init_max_iters
-        self.max_iters = max_iters
+    r: float = 2.0
+    tol: float = 0.01
+    nested_max_iters: int = 30
+    nested_init_max_iters: int = 10
+    max_iters: int = None
+    save_trials: bool = False
 
     def solve(self, problem: Problem) -> SolverResult:
         queue = AdaptiveTaskQueue()

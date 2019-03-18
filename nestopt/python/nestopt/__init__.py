@@ -1,14 +1,14 @@
 from .solvers import (
-    SolverResult,
     NestedSolver,
     AdaptiveSolver,
-    AdaptiveTask,
-    AdaptiveTaskQueue,
-    AdaptiveTaskContext,
     minimize,
 )
 
 from .problems import (
-    Domain,
     GrishaginProblem,
+)
+
+from .utils import (
+    compute_2d,
+    contour_2d,
 )
