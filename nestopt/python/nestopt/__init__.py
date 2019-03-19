@@ -5,6 +5,9 @@ from .solvers import (
 )
 
 from .problems import (
+    BoundingBox,
+    ConstantBound,
+    SphereBound,
     GrishaginProblem,
 )
 

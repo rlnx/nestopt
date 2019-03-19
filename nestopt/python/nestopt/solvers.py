@@ -110,10 +110,6 @@ class AdaptiveTask(object):
             ctx.queue.push(task)
             return task.minimum
 
-    def _init_on_bound(self, ctx, bound):
-        x = bound(self.level, self._x[:-1])
-        return x, self._compute(ctx, x)
-
     def args(self, x):
         self._x[-1] = x
         return self._x
@@ -183,6 +179,7 @@ class AdaptiveSolver(object):
             minimizer=ctx.minimizer,
             minimum=ctx.minimum,
             total_evals=ctx.total_evals,
+            trials=np.array(ctx.trials),
         )
 
     def _max_iters(self, problem):
