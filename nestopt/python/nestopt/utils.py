@@ -2,16 +2,19 @@ import numpy as np
 
 def compute_2d(problem, x: np.ndarray, y: np.ndarray):
     assert problem.dimension == 2
+    xy = np.empty(2, dtype=np.float64)
     def compute_scalar(x, y):
-        return problem.compute([x, y])
+        xy[0] = x
+        xy[1] = y
+        return problem.compute(xy)
     compute_vec = np.vectorize(compute_scalar)
     return compute_vec(x, y)
 
 def contour_2d(problem, n_points=100):
     assert problem.dimension == 2
-    bbox = problem.domain.bound.box
-    xx = np.linspace(bbox.a[0], bbox.b[0], n_points)
-    yy = np.linspace(bbox.a[1], bbox.b[1], n_points)
+    a, b = problem.bound.min, problem.bound.max
+    xx = np.linspace(a[0], b[0], n_points)
+    yy = np.linspace(a[1], b[1], n_points)
     X, Y = np.meshgrid(xx, yy)
     Z = compute_2d(problem, X, Y)
     return xx, yy, Z

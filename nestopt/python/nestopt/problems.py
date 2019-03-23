@@ -1,4 +1,5 @@
 # pylint: disable=no-name-in-module
+from abc import ABC, abstractmethod
 import numpy as np
 from .native import nestopt as nn
 from .utils import (
@@ -8,56 +9,105 @@ from .utils import (
     inverse_sorted_intervals
 )
 
-class BoundingBox(object):
+class Bound(ABC):
+    @abstractmethod
+    def __call__(self, axis: int, x: np.ndarray) -> list: pass
+
+    @property
+    @abstractmethod
+    def dimension(self) -> int: pass
+
+    @property
+    @abstractmethod
+    def min(self) -> np.ndarray: pass
+
+    @property
+    @abstractmethod
+    def max(self) -> np.ndarray: pass
+
+
+class Problem(ABC):
+    @abstractmethod
+    def compute(self, x: np.ndarray) -> float: pass
+
+    @property
+    @abstractmethod
+    def bound(self) -> Bound: pass
+
+    @property
+    @abstractmethod
+    def dimension(self) -> int: pass
+
+
+class BoundingBox(Bound):
     def __init__(self, a, b):
+        assert a is not None
+        assert b is not None
         a = np.asanyarray(a, dtype=nn.float_t)
         b = np.asanyarray(b, dtype=nn.float_t)
         assert len(a.shape) == 1
         assert len(b.shape) == 1
         assert len(a) == len(b)
-        self.a, self.b = a, b
+        assert (b > a).all()
+        self._a, self._b = a, b
 
-    def interval(self, level):
-        return [ self._single_interval(level) ]
+    def __call__(self, axis: int, x: np.ndarray):
+        return [ (self._a[axis], self._b[axis]) ]
 
-    def _single_interval(self, level):
-        return (self.a[level], self.b[level])
+    @property
+    def dimension(self):
+        return len(self._a)
+
+    @property
+    def min(self):
+        return self._a
+
+    @property
+    def max(self):
+        return self._b
+
+    @staticmethod
+    def square(dim, a=0.0, b=1.0):
+        a = np.full(dim, a, dtype=nn.float_t)
+        b = np.full(dim, b, dtype=nn.float_t)
+        return BoundingBox(a, b)
 
 
-class ComputableBound(object):
-    def __call__(self, level: int, x: np.ndarray) -> list:
-        pass
-
-
-class ConstantBound(ComputableBound):
-    def __init__(self, box: BoundingBox):
-        self.box = box
-
-    def __call__(self, level, x):
-        return self.box.interval(level)
-
-
-class SphereBound(ComputableBound):
-    def __init__(self, box: BoundingBox,
-                       centers: np.ndarray,
-                       radiuses: np.ndarray):
-        self.box = box
+class BoundingSpheres(Bound):
+    def __init__(self, box: BoundingBox, centers, radiuses):
+        assert box is not None
+        c = np.asanyarray(centers, dtype=nn.float_t)
+        r = np.asanyarray(radiuses, dtype=nn.float_t)
+        assert len(c.shape) == 2
+        assert len(r.shape) == 1
+        assert c.shape[0] == r.shape[0]
+        assert c.shape[1] == box.dimension
         self._c = centers
         self._r = radiuses
-        self._dim = len(box.a)
-        assert len(centers.shape) == 2
-        assert centers.shape[1] == self._dim
-        assert centers.shape[0] == radiuses.shape[0]
+        self._box = box
+        self._dim = box.dimension
 
-    def __call__(self, level, x):
-        if level < self._dim - 1:
-            return self.box.interval(level)
-        assert len(x) == level + 1
+    def __call__(self, axis: int, x: np.ndarray):
+        if axis < self._dim - 1:
+            return self._box(axis, x)
+        assert len(x) == axis + 1
         assert len(x) == self._dim
         return self._intervals(x)
 
+    @property
+    def dimension(self):
+        return self._dim
+
+    @property
+    def min(self):
+        return self._box.min
+
+    @property
+    def max(self):
+        return self._box.max
+
     def _intervals(self, x, epsilon=1e-2):
-        box_interval = self.box.interval(self._dim - 1)[0]
+        box_interval = self._box(self._dim - 1, x)[0]
         intersections = []
         for i in range(0, len(self._c)):
             intersection = intersect_sphere_with_axis(
@@ -71,41 +121,24 @@ class SphereBound(ComputableBound):
         return inverted_intervals if len(inverted_intervals) > 0 else [ box_interval ]
 
 
-class Domain(object):
-    def __init__(self, bound: ComputableBound):
-        self.bound = bound
-
-    @staticmethod
-    def square(dim, a=0.0, b=1.0):
-        a = np.full(dim, a, dtype=nn.float_t)
-        b = np.full(dim, b, dtype=nn.float_t)
-        return Domain(ConstantBound(BoundingBox(a, b)))
-
-
-class Problem(object):
-    def compute(self, x) -> float:
-        pass
-
-    @property
-    def dimension(self) -> int:
-        pass
-
-    @property
-    def domain(self) -> Domain:
-        pass
-
-
 class GrishaginProblem(Problem):
-    def __init__(self, number, bound: ComputableBound = None):
+    def __init__(self, number, bound: Bound = None):
         self._dimension = 2
         self._number = number
         self._native = nn.PyGrishaginProblem(number)
-        self._domain = ( Domain.square(self._dimension)
-                         if bound is None else Domain(bound) )
+        self._bound = bound or BoundingBox.square(self._dimension)
+        assert self._bound.dimension == self._dimension
 
-    def compute(self, x):
-        x = np.asarray(x, dtype=nn.float_t)
+    def compute(self, x: np.ndarray):
         return self._native.compute(x)
+
+    @property
+    def bound(self):
+        return self._bound
+
+    @property
+    def dimension(self):
+        return self._dimension
 
     @property
     def minimum(self):
@@ -116,13 +149,5 @@ class GrishaginProblem(Problem):
         return self._native.minimizer()
 
     @property
-    def dimension(self):
-        return self._dimension
-
-    @property
     def number(self):
         return self._number
-
-    @property
-    def domain(self):
-        return self._domain

@@ -5,9 +5,10 @@ from .solvers import (
 )
 
 from .problems import (
+    Bound,
+    Problem,
     BoundingBox,
-    ConstantBound,
-    SphereBound,
+    BoundingSpheres,
     GrishaginProblem,
 )
 
