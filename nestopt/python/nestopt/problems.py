@@ -11,7 +11,7 @@ from .utils import (
 
 class Bound(ABC):
     @abstractmethod
-    def __call__(self, axis: int, x: np.ndarray) -> list: pass
+    def interval(self, axis: int, x: np.ndarray) -> list: pass
 
     @property
     @abstractmethod
@@ -51,7 +51,7 @@ class BoundingBox(Bound):
         assert (b > a).all()
         self._a, self._b = a, b
 
-    def __call__(self, axis: int, x: np.ndarray):
+    def interval(self, axis: int, x: np.ndarray):
         return [ (self._a[axis], self._b[axis]) ]
 
     @property
@@ -87,9 +87,9 @@ class BoundingSpheres(Bound):
         self._box = box
         self._dim = box.dimension
 
-    def __call__(self, axis: int, x: np.ndarray):
+    def interval(self, axis: int, x: np.ndarray):
         if axis < self._dim - 1:
-            return self._box(axis, x)
+            return self._box.interval(axis, x)
         assert len(x) == axis + 1
         assert len(x) == self._dim
         return self._intervals(x)
@@ -106,8 +106,16 @@ class BoundingSpheres(Bound):
     def max(self):
         return self._box.max
 
+    @property
+    def centers(self):
+        return self._c
+
+    @property
+    def radiuses(self):
+        return self._r
+
     def _intervals(self, x, epsilon=1e-2):
-        box_interval = self._box(self._dim - 1, x)[0]
+        box_interval = self._box.interval(self._dim - 1, x)[0]
         intersections = []
         for i in range(0, len(self._c)):
             intersection = intersect_sphere_with_axis(
@@ -151,3 +159,42 @@ class GrishaginProblem(Problem):
     @property
     def number(self):
         return self._number
+
+
+class Penalty(ABC):
+    @abstractmethod
+    def compute(self, x: np.ndarray) -> float: pass
+
+class MaxPenalty(Penalty):
+    def __init__(self, constraints: list):
+        assert len(constraints) > 0
+        for constraint in constraints:
+            assert callable(constraint)
+        self._constraints = constraints
+
+    def compute(self, x: np.ndarray):
+        m = np.max([ max(0, g(x)) for g in self._constraints ])
+        return m
+
+
+class PenalizedProblem(Problem):
+    def __init__(self, base: Problem,
+                       penalty: Penalty,
+                       factor=1.0):
+        assert base is not None
+        assert penalty is not None
+        assert factor >= 0
+        self.factor = factor
+        self._base = base
+        self._penalty = penalty
+
+    def compute(self, x: np.ndarray):
+        return self._base.compute(x) + self.factor * self._penalty.compute(x)
+
+    @property
+    def bound(self):
+        return self._base.bound
+
+    @property
+    def dimension(self):
+        return self._base.dimension

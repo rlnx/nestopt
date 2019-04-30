@@ -10,6 +10,9 @@ from .problems import (
     BoundingBox,
     BoundingSpheres,
     GrishaginProblem,
+    Penalty,
+    MaxPenalty,
+    PenalizedProblem,
 )
 
 from .utils import (

@@ -14,11 +14,12 @@ def _nested_loop(iset: IntervalSet,
         if d < epsilon:
             break
 
+@dataclass
 class SolverResult(object):
-    """Result of solver"""
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
-
+    minimizer: np.ndarray
+    minimum: np.ndarray
+    total_evals: int = None
+    trials: np.ndarray = None
 
 class NestedSolver(object):
     """Nested solver"""
@@ -45,7 +46,7 @@ class NestedSolver(object):
         if level == problem.dimension:
             return self._compute_leaf()
         compute_f = lambda y: self._compute_subproblem(level, y)
-        intervals = problem.bound(level, self._x)
+        intervals = problem.bound.interval(level, self._x)
         iset = IntervalSet(intervals, f=compute_f, r=self.r)
         _nested_loop(iset, self.nested_max_iters, self.tol, compute_f)
         return iset.minimum()
@@ -94,7 +95,7 @@ class AdaptiveTask(object):
 
     def _init(self, ctx):
         compute_f = lambda y: self._compute(ctx, y)
-        intervals = ctx.problem.bound(self.level, self._x)
+        intervals = ctx.problem.bound.interval(self.level, self._x)
         iset = IntervalSet(intervals, f=compute_f, r=ctx.params.r)
         _nested_loop(iset, ctx.params.nested_init_max_iters,
                      ctx.params.tol, compute_f)
