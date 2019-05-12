@@ -16,11 +16,21 @@ pyx_library(
 )
 
 py_test(
-    name = "test_solvers",
+    name = "test_nested_solver",
     main = "nestopt/solvers_test.py",
     srcs = [ "nestopt/solvers_test.py" ],
     deps = [ ":nestopt_py" ],
     imports = [ "." ],
+    args = [ "TestNestedSolver" ]
+)
+
+py_test(
+    name = "test_adaptive_solver",
+    main = "nestopt/solvers_test.py",
+    srcs = [ "nestopt/solvers_test.py" ],
+    deps = [ ":nestopt_py" ],
+    imports = [ "." ],
+    args = [ "TestAdaptiveSolver", "TestAdaptiveTask" ]
 )
 
 py_test(

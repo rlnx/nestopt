@@ -1,6 +1,7 @@
 from libc.string cimport memcpy
 from libcpp.memory cimport unique_ptr
 from cpython cimport PyObject, Py_INCREF
+from dataclasses import dataclass
 
 import numpy as np
 cimport numpy as np
@@ -68,6 +69,25 @@ cdef class PyGrishaginProblem(object):
         self.c_problem.reset(new GrishaginProblem(number))
 
     cdef GrishaginProblem *ptr(self):
+        return self.c_problem.get()
+
+    def compute(self, np.ndarray[Scalar, mode='c', ndim=1] x):
+        x_cont = np.ascontiguousarray(x)
+        return self.ptr().Compute(_to_vector_view(x_cont))
+
+    def minimizer(self):
+        return _to_ndarray(self.ptr().Minimizer())
+
+    def minimum(self):
+        return self.ptr().Minimum()
+
+
+cdef class PyGKLSProblem(object):
+    cdef unique_ptr[GKLSProblem] c_problem
+    def __cinit__(self, int number, Size dimension):
+        self.c_problem.reset(new GKLSProblem(number, dimension))
+
+    cdef GKLSProblem *ptr(self):
         return self.c_problem.get()
 
     def compute(self, np.ndarray[Scalar, mode='c', ndim=1] x):

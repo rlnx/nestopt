@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#ifdef _NDEBUG
+#ifdef NDEBUG
 #define NESTOPT_DEBUG 0
 #else
 #define NESTOPT_DEBUG 1

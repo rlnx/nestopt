@@ -45,3 +45,10 @@ cdef extern from "nestopt/core/problems/grishagin.hpp" nogil:
         Scalar Minimum()
         Vector Minimizer()
         Scalar Compute(const Vector &) except +
+
+cdef extern from "nestopt/core/problems/gkls.hpp" nogil:
+    cdef cppclass GKLSProblem "nestopt::core::problems::GKLS":
+        GKLSProblem(int, Size) except +
+        Scalar Minimum()
+        Vector Minimizer()
+        Scalar Compute(const Vector &) except +

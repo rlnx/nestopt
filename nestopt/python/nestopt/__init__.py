@@ -1,6 +1,7 @@
 from .solvers import (
     NestedSolver,
     AdaptiveSolver,
+    SolverResult,
     minimize,
 )
 
@@ -10,6 +11,7 @@ from .problems import (
     BoundingBox,
     BoundingSpheres,
     GrishaginProblem,
+    GKLSProblem,
     Penalty,
     MaxPenalty,
     PenalizedProblem,

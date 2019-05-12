@@ -130,7 +130,7 @@ class BoundingSpheres(Bound):
 
 
 class GrishaginProblem(Problem):
-    def __init__(self, number, bound: Bound = None):
+    def __init__(self, number: int, bound: Bound = None):
         self._dimension = 2
         self._number = number
         self._native = nn.PyGrishaginProblem(number)
@@ -161,19 +161,64 @@ class GrishaginProblem(Problem):
         return self._number
 
 
+class GKLSProblem(Problem):
+    def __init__(self, number: int, dimension: int, bound: Bound = None):
+        self._dimension = dimension
+        self._number = number
+        self._native = nn.PyGKLSProblem(number, dimension)
+        self._bound = bound or BoundingBox.square(dimension, a=-1.0, b=1.0)
+        assert self._bound.dimension == self._dimension
+
+    def compute(self, x: np.ndarray):
+        return self._native.compute(x)
+
+    @property
+    def bound(self):
+        return self._bound
+
+    @property
+    def dimension(self):
+        return self._dimension
+
+    @property
+    def minimum(self):
+        return self._native.minimum()
+
+    @property
+    def minimizer(self):
+        return self._native.minimizer()
+
+    @property
+    def number(self):
+        return self._number
+
+
 class Penalty(ABC):
     @abstractmethod
     def compute(self, x: np.ndarray) -> float: pass
 
+
 class MaxPenalty(Penalty):
-    def __init__(self, constraints: list):
-        assert len(constraints) > 0
-        for constraint in constraints:
-            assert callable(constraint)
-        self._constraints = constraints
+    def __init__(self, constraints: list = None,
+                       vector_constraint = None):
+        assert constraints or vector_constraint
+        if constraints:
+            assert len(constraints) > 0
+            for constraint in constraints:
+                assert callable(constraint)
+            self._is_vector = False
+            self._constraints = constraints
+        elif vector_constraint:
+            assert callable(vector_constraint)
+            self._is_vector = True
+            self._constraints = vector_constraint
 
     def compute(self, x: np.ndarray):
-        m = np.max([ max(0, g(x)) for g in self._constraints ])
+        if self._is_vector:
+            g = self._constraints(x)
+            m = np.max([ max(0, gi) for gi in g ])
+        else:
+            m = np.max([ max(0, g(x)) for g in self._constraints ])
         return m
 
 

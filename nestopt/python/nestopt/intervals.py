@@ -47,6 +47,3 @@ class IntervalSet(object):
 
     def minimum(self):
         return self._native.min()
-
-
-

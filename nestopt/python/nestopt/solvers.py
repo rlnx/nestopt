@@ -1,3 +1,4 @@
+# pylint: disable=no-name-in-module
 import numpy as np
 from dataclasses import dataclass
 from .intervals import IntervalSet
@@ -17,38 +18,40 @@ def _nested_loop(iset: IntervalSet,
 @dataclass
 class SolverResult(object):
     minimizer: np.ndarray
-    minimum: np.ndarray
+    minimum: float
     total_evals: int = None
     trials: np.ndarray = None
 
-class NestedSolver(object):
-    """Nested solver"""
-    def __init__(self, r=2.0, tol=0.01, nested_max_iters=30):
-        self.r = r
-        self.tol = tol
-        self.nested_max_iters = nested_max_iters
 
-    def solve(self, problem: Problem) -> SolverResult:
+class NestedTask(object):
+    def __init__(self, params):
+        self.params = params
+
+    def solve(self, problem):
         self._min_x = None
         self._min_z = np.inf
         self._problem = problem
         self._total_evals = 0
-        self._x = np.empty(problem.dimension)
+        self._x = np.zeros(problem.dimension)
+        self._trials = []
         self._solve(0)
         return SolverResult(
-            minimizer = self._min_x,
-            minimum = self._min_z,
-            total_evals = self._total_evals,
+            minimizer=self._min_x,
+            minimum=self._min_z,
+            total_evals=self._total_evals,
+            trials=np.array(self._trials)
         )
 
     def _solve(self, level):
         problem = self._problem
         if level == problem.dimension:
             return self._compute_leaf()
-        compute_f = lambda y: self._compute_subproblem(level, y)
+
+        def compute_f(y): return self._compute_subproblem(level, y)
         intervals = problem.bound.interval(level, self._x)
-        iset = IntervalSet(intervals, f=compute_f, r=self.r)
-        _nested_loop(iset, self.nested_max_iters, self.tol, compute_f)
+        iset = IntervalSet(intervals, f=compute_f, r=self.params.r)
+        _nested_loop(iset, self.params.nested_max_iters,
+                     self.params.tol, compute_f)
         return iset.minimum()
 
     def _compute_subproblem(self, level, y):
@@ -57,11 +60,25 @@ class NestedSolver(object):
 
     def _compute_leaf(self):
         z = self._problem.compute(self._x)
+        if self.params.save_trials:
+            self._trials.append(self._x.copy())
         if z < self._min_z:
             self._min_x = self._x.copy()
             self._min_z = z
         self._total_evals += 1
         return z
+
+
+@dataclass
+class NestedSolver(object):
+    name: str = 'nested'
+    r: float = 2.0
+    tol: float = 0.01
+    nested_max_iters: int = 30
+    save_trials: bool = False
+
+    def solve(self, problem: Problem) -> SolverResult:
+        return NestedTask(self).solve(problem)
 
 
 class AdaptiveTaskContext(object):
@@ -149,6 +166,7 @@ class AdaptiveTaskQueue(object):
 
 @dataclass
 class AdaptiveSolver(object):
+    name: str = 'adaptive'
     r: float = 2.0
     tol: float = 0.01
     nested_max_iters: int = 30
