@@ -34,13 +34,12 @@ def _py_package_impl(ctx):
         file_copy = _copy_to_package(ctx, file)
         target_files.append(file_copy)
 
-    genfiles = depset(target_files)
     for src in ctx.attr.srcs:
         rfiles = src[DefaultInfo].default_runfiles.files
         files = [ f for f in rfiles if not f.is_source ]
-        genfiles = genfiles.union(files)
+        target_files += files
 
-    return DefaultInfo(files = genfiles)
+    return DefaultInfo(files = depset(target_files))
 
 py_package = rule(
     implementation = _py_package_impl,
