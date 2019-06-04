@@ -17,7 +17,6 @@ cc_test(
     srcs = [ "intervals_test.cpp" ],
     deps = [
         ":nestopt_core",
-        ":nestopt_core_c",
         "@gtest//:gtest",
         "@gtest//:gtest_main",
     ],
