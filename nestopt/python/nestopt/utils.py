@@ -10,12 +10,14 @@ def compute_2d(problem, x: np.ndarray, y: np.ndarray):
     compute_vec = np.vectorize(compute_scalar)
     return compute_vec(x, y)
 
-def contour_2d(problem, n_points=100):
+def contour_2d(problem, n_points=100, penalty=None):
     assert problem.dimension == 2
     a, b = problem.bound.min, problem.bound.max
     xx = np.linspace(a[0], b[0], n_points)
     yy = np.linspace(a[1], b[1], n_points)
     X, Y = np.meshgrid(xx, yy)
+    if not penalty is None:
+        problem.factor = penalty
     Z = compute_2d(problem, X, Y)
     return xx, yy, Z
 
