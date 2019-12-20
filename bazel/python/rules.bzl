@@ -36,7 +36,7 @@ def _py_package_impl(ctx):
 
     for src in ctx.attr.srcs:
         rfiles = src[DefaultInfo].default_runfiles.files
-        files = [ f for f in rfiles if not f.is_source ]
+        files = [ f for f in rfiles.to_list() if not f.is_source ]
         target_files += files
 
     return DefaultInfo(files = depset(target_files))
