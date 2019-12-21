@@ -122,7 +122,8 @@ public:
     return Full(size, 0.0);
   }
 
-  static Vector Copy(const std::vector<Scalar> &source) {
+  template <typename Container>
+  static Vector Copy(const Container &source) {
     return Empty(source.size()).Fill([&](Size i) { return source[i]; });
   }
 
