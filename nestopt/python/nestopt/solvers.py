@@ -48,7 +48,7 @@ class NestedTask(object):
             return self._compute_leaf()
 
         def compute_f(y): return self._compute_subproblem(level, y)
-        intervals = problem.bound.interval(level, self._x)
+        intervals = problem.domain.interval(level, self._x)
         iset = IntervalSet(intervals, f=compute_f, r=self.params.r)
         _nested_loop(iset, self.params.nested_max_iters,
                      self.params.tol, compute_f)
@@ -112,7 +112,7 @@ class AdaptiveTask(object):
 
     def _init(self, ctx):
         compute_f = lambda y: self._compute(ctx, y)
-        intervals = ctx.problem.bound.interval(self.level, self._x)
+        intervals = ctx.problem.domain.interval(self.level, self._x)
         iset = IntervalSet(intervals, f=compute_f, r=ctx.params.r)
         _nested_loop(iset, ctx.params.nested_init_max_iters,
                      ctx.params.tol, compute_f)

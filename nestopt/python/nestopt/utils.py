@@ -12,7 +12,7 @@ def compute_2d(problem, x: np.ndarray, y: np.ndarray):
 
 def contour_2d(problem, n_points=100, penalty=None):
     assert problem.dimension == 2
-    a, b = problem.bound.min, problem.bound.max
+    a, b = problem.domain.min, problem.domain.max
     xx = np.linspace(a[0], b[0], n_points)
     yy = np.linspace(a[1], b[1], n_points)
     X, Y = np.meshgrid(xx, yy)

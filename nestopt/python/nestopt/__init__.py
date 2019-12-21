@@ -6,7 +6,7 @@ from .solvers import (
 )
 
 from .problems import (
-    Bound,
+    Domain,
     Problem,
     BoundingBox,
     BoundingSpheres,

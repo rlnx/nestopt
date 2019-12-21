@@ -9,7 +9,7 @@ from .utils import (
     inverse_sorted_intervals
 )
 
-class Bound(ABC):
+class Domain(ABC):
     @abstractmethod
     def interval(self, axis: int, x: np.ndarray) -> list: pass
 
@@ -32,14 +32,14 @@ class Problem(ABC):
 
     @property
     @abstractmethod
-    def bound(self) -> Bound: pass
+    def domain(self) -> Domain: pass
 
     @property
     @abstractmethod
     def dimension(self) -> int: pass
 
 
-class BoundingBox(Bound):
+class BoundingBox(Domain):
     def __init__(self, a, b):
         assert a is not None
         assert b is not None
@@ -73,7 +73,7 @@ class BoundingBox(Bound):
         return BoundingBox(a, b)
 
 
-class BoundingSpheres(Bound):
+class BoundingSpheres(Domain):
     def __init__(self, box: BoundingBox, centers, radiuses):
         assert box is not None
         c = np.asanyarray(centers, dtype=nn.float_t)
@@ -130,19 +130,19 @@ class BoundingSpheres(Bound):
 
 
 class GrishaginProblem(Problem):
-    def __init__(self, number: int, bound: Bound = None):
+    def __init__(self, number: int, domain: Domain = None):
         self._dimension = 2
         self._number = number
         self._native = nn.PyGrishaginProblem(number)
-        self._bound = bound or BoundingBox.square(self._dimension)
-        assert self._bound.dimension == self._dimension
+        self._domain = domain or BoundingBox.square(self._dimension)
+        assert self._domain.dimension == self._dimension
 
     def compute(self, x: np.ndarray):
         return self._native.compute(x)
 
     @property
-    def bound(self):
-        return self._bound
+    def domain(self):
+        return self._domain
 
     @property
     def dimension(self):
@@ -162,19 +162,19 @@ class GrishaginProblem(Problem):
 
 
 class GKLSProblem(Problem):
-    def __init__(self, number: int, dimension: int, bound: Bound = None):
+    def __init__(self, number: int, dimension: int, domain: Domain = None):
         self._dimension = dimension
         self._number = number
         self._native = nn.PyGKLSProblem(number, dimension)
-        self._bound = bound or BoundingBox.square(dimension, a=-1.0, b=1.0)
-        assert self._bound.dimension == self._dimension
+        self._domain = domain or BoundingBox.square(dimension, a=-1.0, b=1.0)
+        assert self._domain.dimension == self._dimension
 
     def compute(self, x: np.ndarray):
         return self._native.compute(x)
 
     @property
-    def bound(self):
-        return self._bound
+    def domain(self):
+        return self._domain
 
     @property
     def dimension(self):
@@ -237,8 +237,8 @@ class PenalizedProblem(Problem):
         return self._base.compute(x) + self.factor * self._penalty.compute(x)
 
     @property
-    def bound(self):
-        return self._base.bound
+    def domain(self):
+        return self._base.domain
 
     @property
     def dimension(self):
