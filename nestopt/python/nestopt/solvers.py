@@ -1,8 +1,8 @@
 # pylint: disable=no-name-in-module
 import numpy as np
 from dataclasses import dataclass
-from .intervals import IntervalSet
-from .problems import Problem
+from nestopt.intervals import IntervalSet
+from nestopt.problems import Problem
 
 def _nested_loop(iset: IntervalSet,
                  max_iters: int,

@@ -1,5 +1,5 @@
 # pylint: disable=no-name-in-module
-from .native import nestopt as nn
+from nestopt.native import nestopt as nn
 
 def _is_2d_tuple(interval_or_point):
     return (isinstance(interval_or_point, tuple) and

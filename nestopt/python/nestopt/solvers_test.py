@@ -1,5 +1,5 @@
 # pylint: disable=no-member
-
+import os
 import unittest
 import numpy as np
 import nestopt as nopt
@@ -24,6 +24,17 @@ class ConvergenceTest(unittest.TestCase):
         message = (f'{solver_name} solver does not converge on '
                    f'{objective_name}: min({result.minimum})')
         self.assertLess(diff, delta, message)
+
+    def setUp(self):
+        if os.environ.get('NESTOPT_PROFILE'):
+            import cProfile
+            self._profiler = cProfile.Profile()
+            self._profiler.enable()
+
+    def tearDown(self):
+        if hasattr(self, '_profiler'):
+            self._profiler.disable()
+            self._profiler.print_stats(sort="tottime")
 
 
 class TestNestedSolver(ConvergenceTest):

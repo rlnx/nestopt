@@ -1,8 +1,8 @@
 # pylint: disable=no-name-in-module
 from abc import ABC, abstractmethod
 import numpy as np
-from .native import nestopt as nn
-from .utils import (
+from nestopt.native import nestopt as nn
+from nestopt.utils import (
     unite_intervals,
     intersect_two_intervals,
     intersect_sphere_with_axis,
