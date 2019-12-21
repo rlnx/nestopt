@@ -1,6 +1,15 @@
 load("@//bazel/cython:rules.bzl", "pyx_library")
 load("@//bazel/python:rules.bzl", "py_package")
 
+cc_library(
+    name = "numpy_glue",
+    hdrs = glob([ "nestopt/native/**/*.hpp" ]),
+    deps = [
+        "//nestopt/core:headers",
+        "@python//:numpy_headers",
+    ],
+)
+
 pyx_library(
     name = "nestopt_py",
     srcs = glob(["nestopt/**/*.py"], exclude=["nestopt/**/*_test.py"]),
@@ -11,8 +20,9 @@ pyx_library(
     cc_deps = [
         "@python//:headers",
         "@python//:numpy_headers",
+        ":numpy_glue",
         "//nestopt/core:nestopt_core",
-    ]
+    ],
 )
 
 py_test(

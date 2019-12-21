@@ -1,7 +1,5 @@
 from libcpp cimport bool
-
-cdef extern from "<utility>" nogil:
-    Vector std_move "std::move" (Vector)
+from cpython.ref cimport PyObject
 
 cdef extern from "nestopt/core/types.hpp" namespace "nestopt::core" nogil:
     # Common typedefs
@@ -10,10 +8,6 @@ cdef extern from "nestopt/core/types.hpp" namespace "nestopt::core" nogil:
 
     # Common types
     cdef cppclass Vector:
-        # Static methods
-        @staticmethod
-        Vector Wrap(Scalar *, Size)
-        # Member methods
         Size size()
         Scalar *data()
         Scalar at(Size)
@@ -23,6 +17,9 @@ cdef extern from "<vector>" namespace "std" nogil:
         vector()
         void reserve(size_t)
         void emplace_back(Scalar, Scalar, Scalar, Scalar)
+
+cdef extern from "nestopt/python/nestopt/native/numpy_glue.hpp" namespace "nestopt::numpy_glue" nogil:
+    Vector FromNumpy(PyObject *)
 
 cdef extern from "nestopt/core/intervals.hpp" nogil:
     cdef cppclass Interval "nestopt::core::Interval":

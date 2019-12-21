@@ -13,25 +13,27 @@ _NumpyTypeId = np.NPY_FLOAT64
 # Expose NumPy floating point type to the user
 float_t = _NumpyScalar
 
-cdef class _vector_as(object):
+cdef class _PyVectorHolder(object):
     cdef Vector c_vector
-    cdef ndarray(self, Vector &&vector):
-        cdef np.ndarray array
-        cdef np.npy_intp shape[1]
-        self.c_vector = std_move(vector)
-        shape[0] = <np.npy_intp> self.c_vector.size()
-        array = np.PyArray_SimpleNewFromData(
-            1, shape, _NumpyTypeId, self.c_vector.data())
-        array.base = <PyObject *> self
-        Py_INCREF(self)
-        return array
+    cdef __initz__(self, const Vector &vector):
+        self.c_vector = vector
 
-cdef _to_ndarray(Vector &&vector):
-    return _vector_as().ndarray(std_move(vector))
+cdef Vector _numpy2vector(np.ndarray[Scalar, mode='c', ndim=1] x):
+    x_cont = np.ascontiguousarray(x)
+    return FromNumpy(<PyObject *> x_cont)
 
-cdef Vector _to_vector_view(np.ndarray[Scalar, mode='c', ndim=1] ndarray):
-    return Vector.Wrap(<Scalar *> ndarray.data, ndarray.size)
-
+cdef _vector2numpy(const Vector &vector):
+    cdef np.ndarray array
+    cdef np.npy_intp shape[1]
+    cdef _PyVectorHolder holder
+    shape[0] = <np.npy_intp> vector.size()
+    array = np.PyArray_SimpleNewFromData(
+        1, shape, _NumpyTypeId, <Scalar *> vector.data())
+    holder = _PyVectorHolder()
+    holder.__initz__(vector)
+    array.base = <PyObject *> holder
+    Py_INCREF(holder)
+    return array
 
 cdef class PyIntervalSet(object):
     cdef unique_ptr[DefaultIntervalSet] c_set
@@ -72,11 +74,10 @@ cdef class PyGrishaginProblem(object):
         return self.c_problem.get()
 
     def compute(self, np.ndarray[Scalar, mode='c', ndim=1] x):
-        x_cont = np.ascontiguousarray(x)
-        return self.ptr().Compute(_to_vector_view(x_cont))
+        return self.ptr().Compute(_numpy2vector(x))
 
     def minimizer(self):
-        return _to_ndarray(self.ptr().Minimizer())
+        return _vector2numpy(self.ptr().Minimizer())
 
     def minimum(self):
         return self.ptr().Minimum()
@@ -91,11 +92,10 @@ cdef class PyGKLSProblem(object):
         return self.c_problem.get()
 
     def compute(self, np.ndarray[Scalar, mode='c', ndim=1] x):
-        x_cont = np.ascontiguousarray(x)
-        return self.ptr().Compute(_to_vector_view(x_cont))
+        return self.ptr().Compute(_numpy2vector(x))
 
     def minimizer(self):
-        return _to_ndarray(self.ptr().Minimizer())
+        return _vector2numpy(self.ptr().Minimizer())
 
     def minimum(self):
         return self.ptr().Minimum()
