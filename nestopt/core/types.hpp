@@ -29,106 +29,50 @@ namespace core {
 using Scalar = double;
 using Size   = std::size_t;
 
-template<typename T>
-class DefaultAllocator {
-public:
-  T *allocate(Size size) {
-    return new T[size];
-  }
-
-  void deallocate(const T *pointer) {
-    delete[] pointer;
-  }
-};
-
-template<typename T>
-class Buffer {
-public:
-  virtual ~Buffer() { }
-  virtual T *data() = 0;
-  virtual Size size() = 0;
-};
-template<typename T>
-using UniqueBuffer = std::unique_ptr<Buffer<T>>;
-
-template<typename BufferType, typename ... Args>
-std::unique_ptr<BufferType> MakeUniqueBuffer(Args &&...args) {
-  return std::unique_ptr<BufferType>(new BufferType(std::forward<Args>(args)...));
-}
-
-template<typename T, typename Allocator = DefaultAllocator<T>>
-class OwnBuffer : public Buffer<T> {
-public:
-  explicit OwnBuffer(Size size, const Allocator &allocator = Allocator())
-    : allocator_(allocator),
-      data_(allocator_.allocate(size)),
-      size_(size) { }
-
-  ~OwnBuffer() {
-    allocator_.deallocate(data_);
-  }
-
-  T *data() override {
-    return data_;
-  }
-
-  Size size() override {
-    return size_;
-  }
-
-private:
-  Allocator allocator_;
-  T *data_;
-  Size size_;
-};
-
-template<typename T>
-class ViewBuffer : public Buffer<T> {
-public:
-  explicit ViewBuffer(T *data, Size size)
-    : data_(data),
-      size_(size) { }
-
-  T *data() override {
-    return data_;
-  }
-
-  Size size() override {
-    return size_;
-  }
-
- private:
-  T *data_;
-  Size size_;
-};
+template <typename T>
+using Shared = std::shared_ptr<T>;
 
 template<typename T>
 class VectorBase {
 public:
   /* STL-compatible type traits */
-  typedef T                 value_type;
-  typedef Size              size_type;
-  typedef std::ptrdiff_t    difference_type;
-  typedef value_type&       reference;
-  typedef const value_type& const_reference;
-  typedef value_type*       pointer;
-  typedef const pointer     const_pointer;
+  using value_type = T;
+  using size_type = Size;
+  using difference_type = std::ptrdiff_t;
+  using reference = value_type&;
+  using const_reference = const value_type&;
+  using pointer = value_type*;
+  using const_pointer = const pointer;
 
   VectorBase() = default;
 
-  explicit VectorBase(T *data, Size size)
-    : size_(size),
-      data_(data) { }
+  explicit VectorBase(const Shared<T> &base, T *data, Size size)
+      : base_(base),
+        data_(data),
+        size_(size) {
+      NestoptAssert(data >= base.get());
+    }
+
+  explicit VectorBase(const Shared<T> &data, Size size)
+    : VectorBase(data, data.get(), size) {}
+
+  template <typename Deleter = std::default_delete<T[]>>
+  explicit VectorBase(T *base, T *data, Size size, Deleter &&deleter = Deleter{})
+    : VectorBase(std::shared_ptr<T>(base, deleter), data, size) {}
+
+  template <typename Deleter = std::default_delete<T[]>>
+  explicit VectorBase(T *data, Size size, Deleter &&deleter = Deleter{})
+    : VectorBase(std::shared_ptr<T>(data, deleter), data, size) {}
 
   Size size() const {
     return size_;
   }
 
-  T *data() {
+  const T *data() const {
     return data_;
   }
 
-  const T *data() const {
+  T *data() {
     return data_;
   }
 
@@ -150,24 +94,28 @@ public:
     return at(i);
   }
 
+protected:
+  const Shared<T> &get_base() const {
+    return base_;
+  }
+
 private:
-  Size size_ = 0;
+  Shared<T> base_;
   T *data_ = nullptr;
+  Size size_ = 0;
 };
 
 class Vector : public VectorBase<Scalar> {
 public:
-  typedef VectorBase<Scalar> super;
+  using Super = VectorBase<Scalar>;
+  using Super::Super;
 
   static Vector Empty(Size size) {
-    typedef OwnBuffer<Scalar> BufferType;
-    return Vector(MakeUniqueBuffer<BufferType>(size));
+    return Vector(new Scalar[size], size);
   }
 
   static Vector Full(Size size, Scalar value) {
-    return Empty(size).Fill(
-      [&](Size i) { return value; }
-    );
+    return Empty(size).Fill([&](Size i) { return value; });
   }
 
   static Vector Zeros(Size size) {
@@ -175,24 +123,17 @@ public:
   }
 
   static Vector Copy(const std::vector<Scalar> &source) {
-    return Empty(source.size()).Fill(
-      [&](Size i) { return source[i]; }
-    );
+    return Empty(source.size()).Fill([&](Size i) { return source[i]; });
   }
 
   static Vector Wrap(Scalar *data, Size size) {
-    return Vector(MakeUniqueBuffer<ViewBuffer<Scalar>>(data, size));
+    return Vector(data, size, [](Scalar *) {});
   }
 
-  Vector() = default;
-
-  explicit Vector(UniqueBuffer<Scalar> &&buffer)
-    : super(buffer->data(), buffer->size()),
-      buffer_(std::move(buffer)) { }
-
   Vector View(Size offset, Size subsize) const {
-    NestoptAssert( offset + subsize <= size() );
-    return Wrap(const_cast<Scalar *>(data() + offset), subsize);
+    NestoptAssert(offset + subsize <= size());
+    const auto data_mutable = const_cast<Scalar *>(data());
+    return Vector(get_base(), data_mutable + offset, subsize);
   }
 
   template <typename Body>
@@ -212,9 +153,6 @@ public:
   Vector &&Fill(const Body &body) {
     return For([&](Size i) { at(i) = body(i); });
   }
-
-private:
-  UniqueBuffer<Scalar> buffer_;
 };
 
 } // namespace nestopt
