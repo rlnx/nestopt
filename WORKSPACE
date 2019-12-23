@@ -1,7 +1,7 @@
 workspace(name = "nestopt")
 
 # Configure Python repository (stores path to the include and lib)
-load("@//bazel/python:repo.bzl", "python_repo")
+load("//bazel/python:repo.bzl", "python_repo")
 python_repo(name = "python")
 
 # Google Test

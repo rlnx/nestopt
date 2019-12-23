@@ -1,6 +1,6 @@
 # Adapted with modifications from
 # tensorflow/tensorflow/core/platform/default/build_config.bzl
-def pyx_library(name, pyx_srcs=[], pyx_deps=[], cc_deps=[], **kwargs):
+def pyx_library(name, pyx_srcs=[], pyx_deps=[], cc_deps=[], cc_opts=[], **kwargs):
     """Compiles a group of .pyx / .pxd files.
 
     First runs Cython to create .cpp files for each input .pyx. Then builds a
@@ -31,6 +31,7 @@ def pyx_library(name, pyx_srcs=[], pyx_deps=[], cc_deps=[], **kwargs):
             name = stem + 'so',
             srcs = [ stem + 'cpp' ],
             deps = cc_deps,
+            copts = cc_opts,
             linkopts = [ '-Wl,-undefined,dynamic_lookup' ],
             linkshared = 1,
         )

@@ -1,0 +1,30 @@
+load("//bazel/config:copts.bzl", "NESTOPT_DEFAULT_COPTS")
+
+cc_library(
+    name = "headers",
+    hdrs = glob([ "**/*.hpp" ]),
+    visibility = [ "//visibility:public" ],
+)
+
+cc_library(
+    name = "lib",
+    srcs = glob([ "**/*.cpp"], exclude=[ "**/*_test.cpp" ]),
+    copts = NESTOPT_DEFAULT_COPTS,
+    deps = [
+        ":headers",
+        "//nestopt/core:common_headers",
+    ],
+    visibility = [ "//visibility:public" ],
+)
+
+cc_test(
+    name = "cubes_test",
+    srcs = [ "cubes_test.cpp" ],
+    copts = NESTOPT_DEFAULT_COPTS,
+    deps = [
+        ":lib",
+        "//nestopt/core:common_lib",
+        "@gtest//:gtest",
+        "@gtest//:gtest_main",
+    ],
+)

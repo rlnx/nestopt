@@ -1,7 +1,8 @@
-#include "nestopt/core/cubes.hpp"
+#include "nestopt/core/direct/cubes.hpp"
 
 namespace nestopt {
 namespace core {
+namespace direct {
 
 class AxisSegment {
  public:
@@ -101,5 +102,6 @@ void Cube::Split(CubeSet &output_container,
   GenerateCubes(*this, output_container, axis_segments);
 }
 
+} // namespace direct
 } // namespace core
 } // namespace nestopt

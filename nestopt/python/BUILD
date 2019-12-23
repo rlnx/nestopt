@@ -1,9 +1,11 @@
-load("@//bazel/cython:rules.bzl", "pyx_library")
-load("@//bazel/python:rules.bzl", "py_package")
+load("//bazel/cython:rules.bzl", "pyx_library")
+load("//bazel/python:rules.bzl", "py_package")
+load("//bazel/config:copts.bzl", "NESTOPT_DEFAULT_COPTS")
 
 cc_library(
     name = "numpy_glue",
     hdrs = glob([ "nestopt/native/**/*.hpp" ]),
+    copts = NESTOPT_DEFAULT_COPTS,
     deps = [
         "//nestopt/core:headers",
         "@python//:numpy_headers",
@@ -17,11 +19,12 @@ pyx_library(
     pyx_deps = glob([ "nestopt/**/*.pxd" ]) + [
         "//nestopt/core:headers",
     ],
+    cc_opts = NESTOPT_DEFAULT_COPTS,
     cc_deps = [
         "@python//:headers",
         "@python//:numpy_headers",
         ":numpy_glue",
-        "//nestopt/core:nestopt_core",
+        "//nestopt/core:lib",
     ],
 )
 

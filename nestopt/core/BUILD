@@ -1,49 +1,58 @@
+load("//bazel/config:copts.bzl", "NESTOPT_DEFAULT_COPTS")
+
 cc_library(
-    name = "headers_c",
+    name = "common_headers_c",
     hdrs = glob([ "**/*.h" ]),
 )
 
 cc_library(
-    name = "headers",
+    name = "common_lib_c",
+    srcs = glob(["**/*.c"]),
+    deps = [ ":common_headers_c" ],
+)
+
+cc_library(
+    name = "common_headers",
     hdrs = glob([ "**/*.hpp" ]),
-    deps = [ ":headers_c" ],
+    deps = [ ":common_headers_c" ],
     visibility = [ "//visibility:public" ],
 )
 
 cc_library(
-    name = "nestopt_core_c",
-    srcs = glob(["**/*.c"]),
-    deps = [ ":headers_c" ],
+    name = "common_lib",
+    srcs = glob([ "**/*.cpp"], exclude=[ "**/*_test.cpp" ]),
+    copts = NESTOPT_DEFAULT_COPTS,
+    deps = [
+        ":common_headers",
+        ":common_lib_c",
+    ],
+    visibility = [ "//visibility:public" ],
 )
 
 cc_library(
-    name = "nestopt_core",
-    srcs = glob([ "**/*.cpp"], exclude=[ "**/*_test.cpp" ]),
+    name = "headers",
     deps = [
-        ":headers",
-        ":nestopt_core_c",
+        ":common_headers",
+        "//nestopt/core/direct:headers",
     ],
-    copts = [ "-std=c++17" ],
+    visibility = [ "//visibility:public" ],
+)
+
+cc_library(
+    name = "lib",
+    deps = [
+        ":common_lib",
+        "//nestopt/core/direct:lib"
+    ],
     visibility = [ "//visibility:public" ],
 )
 
 cc_test(
     name = "intervals_test",
     srcs = [ "intervals_test.cpp" ],
-    copts = [ "-std=c++17" ],
+    copts = NESTOPT_DEFAULT_COPTS,
     deps = [
-        ":nestopt_core",
-        "@gtest//:gtest",
-        "@gtest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "cubes_test",
-    srcs = [ "cubes_test.cpp" ],
-    copts = [ "-std=c++17" ],
-    deps = [
-        ":nestopt_core",
+        ":common_lib",
         "@gtest//:gtest",
         "@gtest//:gtest_main",
     ],

@@ -2,12 +2,12 @@
 
 #include "gtest/gtest.h"
 
-#include "nestopt/core/cubes.hpp"
+#include "nestopt/core/direct/cubes.hpp"
 #include "nestopt/core/utils/common.hpp"
-#include "nestopt/core/utils/random.hpp"
 
 namespace nestopt {
 namespace core {
+namespace direct {
 namespace {
 
 struct ZeroFunction {
@@ -174,5 +174,6 @@ INSTANTIATE_TEST_CASE_P(CubeTestDimensionsMixed, CubeTest,
 #undef t_
 
 } // namespace
+} // namespace direct
 } // namespace core
 } // namespace nestopt

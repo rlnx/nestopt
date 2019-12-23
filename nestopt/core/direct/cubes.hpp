@@ -4,11 +4,11 @@
 #include <queue>
 
 #include "nestopt/core/types.hpp"
-#include "nestopt/core/intervals.hpp"
 #include "nestopt/core/utils/common.hpp"
 
 namespace nestopt {
 namespace core {
+namespace direct {
 
 class Cube;
 class CubeSet;
@@ -74,11 +74,34 @@ Size GetCubeIndex(const Cube &cube) {
 }
 
 class CubeGroup {
+ public:
+  CubeGroup() = default;
+  CubeGroup(const CubeGroup &other) = delete;
+  CubeGroup &operator=(const CubeGroup &other) = delete;
+
+  void push_back(const Cube &cube) {
+    queue_.emplace(new Cube{cube});
+  }
+
+  template <typename... Args>
+  void emplace_back(Args &&... args) {
+    queue_.emplace(new Cube{std::forward<Args>(args)...});
+  }
+
+  bool empty() const {
+    return queue_.empty();
+  }
+
+  Cube pop() {
+    auto best = queue_.top();
+    queue_.pop();
+    return *best.cube;
+  }
+
  private:
   struct Entry {
-    template <typename... Args>
-    explicit Entry(Args &&... args)
-      : cube(new Cube(std::forward<Args>(args)...)),
+    explicit Entry(Cube *cube)
+      : cube(cube),
         priority(cube->z()) {}
 
     bool operator <(const Entry &other) const {
@@ -97,35 +120,11 @@ class CubeGroup {
     ~Container() {
       for (auto &entry : *this) {
         delete entry.cube;
+        entry.cube = nullptr;
       }
     }
   };
 
- public:
-  CubeGroup() = default;
-  CubeGroup(const CubeGroup &other) = delete;
-  CubeGroup &operator=(const CubeGroup &other) = delete;
-
-  void push_back(const Cube &cube) {
-    queue_.emplace(cube);
-  }
-
-  template <typename... Args>
-  void emplace_back(Args &&... args) {
-    queue_.emplace(std::forward<Args>(args)...);
-  }
-
-  bool empty() const {
-    return queue_.empty();
-  }
-
-  Cube pop() {
-    auto best = queue_.top();
-    queue_.pop();
-    return *best.cube;
-  }
-
- private:
   std::priority_queue<Entry, Container> queue_;
 };
 
@@ -142,6 +141,7 @@ class CubeSet {
   ~CubeSet() {
     for (CubeGroup *group : groups_) {
       delete group;
+      group = nullptr;
     }
   }
 
@@ -193,5 +193,6 @@ class CubeSet {
   std::vector<CubeGroup *> groups_;
 };
 
+}  // namespace direct
 }  // namespace core
 }  // namespace nestopt
