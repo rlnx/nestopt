@@ -1,9 +1,10 @@
+#include <iostream>
+
 #include "gtest/gtest.h"
+
+#include "nestopt/core/intervals.hpp"
 #include "nestopt/core/utils/common.hpp"
 #include "nestopt/core/utils/random.hpp"
-#include "nestopt/core/intervals.hpp"
-
-#include <iostream>
 
 namespace nestopt {
 namespace core {

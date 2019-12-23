@@ -30,6 +30,18 @@ cc_library(
 cc_test(
     name = "intervals_test",
     srcs = [ "intervals_test.cpp" ],
+    copts = [ "-std=c++17" ],
+    deps = [
+        ":nestopt_core",
+        "@gtest//:gtest",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "cubes_test",
+    srcs = [ "cubes_test.cpp" ],
+    copts = [ "-std=c++17" ],
     deps = [
         ":nestopt_core",
         "@gtest//:gtest",

@@ -50,8 +50,8 @@ public:
       : base_(base),
         data_(data),
         size_(size) {
-      NestoptAssert(data >= base.get());
-    }
+    NestoptAssert(data >= base.get());
+  }
 
   explicit VectorBase(const Shared<T> &data, Size size)
     : VectorBase(data, data.get(), size) {}
@@ -63,6 +63,11 @@ public:
   template <typename Deleter = std::default_delete<T[]>>
   explicit VectorBase(T *data, Size size, Deleter &&deleter = Deleter{})
     : VectorBase(std::shared_ptr<T>(data, deleter), data, size) {}
+
+  explicit VectorBase(const std::vector<T> &vector)
+      : VectorBase(new T[vector.size()], vector.size()) {
+    std::copy(vector.begin(), vector.end(), data_);
+  }
 
   Size size() const {
     return size_;
@@ -133,7 +138,7 @@ public:
 
   Vector View(Size offset, Size subsize) const {
     NestoptAssert(offset + subsize <= size());
-    const auto data_mutable = const_cast<Scalar *>(data());
+    auto data_mutable = const_cast<Scalar *>(data());
     return Vector(get_base(), data_mutable + offset, subsize);
   }
 
