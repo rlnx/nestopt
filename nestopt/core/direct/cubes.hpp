@@ -10,6 +10,21 @@ namespace nestopt {
 namespace core {
 namespace direct {
 
+inline Scalar GetCubeDelta(Size round) {
+  return std::pow(Scalar(3.), -Scalar(round));
+}
+
+inline Size GetCubeIndex(Size dimension, Size round, Size used_axis_count) {
+  NestoptAssert(used_axis_count < dimension);
+  return round * dimension + used_axis_count;
+}
+
+inline Scalar GetCubeDiagonal(Size dimension, Size round, Size used_axis_count) {
+  const Scalar delta = GetCubeDelta(round);
+  const Scalar factor = Scalar(8. / 9.);
+  return delta * std::sqrt(Scalar(dimension) - factor * Scalar(used_axis_count));
+}
+
 class Cube;
 class CubeSet;
 
@@ -17,7 +32,6 @@ class Cube {
  public:
   static constexpr Size max_cube_dimension = 32;
   using AxesBitset = std::bitset<max_cube_dimension>;
-  using Objective = std::function<Scalar(const Vector &)>;
 
   explicit Cube(const Vector &x, Scalar z)
       : x_(x), z_(z) {
@@ -56,6 +70,14 @@ class Cube {
 
   auto &used_axes() const { return used_axes_; }
 
+  Scalar index() const {
+    return GetCubeIndex(dimension(), round(), used_axis_count());
+  }
+
+  Scalar diag() const {
+    return GetCubeDiagonal(dimension(), round(), used_axis_count());
+  }
+
  private:
   Vector x_;
   Scalar z_ = utils::Infinity();
@@ -63,15 +85,6 @@ class Cube {
   Size used_axis_count_ = 0;
   AxesBitset used_axes_;
 };
-
-Size GetCubeIndex(Size dimension, Size round, Size used_axis_count) {
-  NestoptAssert(used_axis_count < dimension);
-  return round * dimension + used_axis_count;
-}
-
-Size GetCubeIndex(const Cube &cube) {
-  return GetCubeIndex(cube.x().size(), cube.round(), cube.used_axis_count());
-}
 
 class CubeGroup {
  public:
@@ -146,8 +159,7 @@ class CubeSet {
   }
 
   void push_back(const Cube &cube) {
-    const Size index = GetCubeIndex(cube);
-    get_group(index).push_back(cube);
+    get_group(cube.index()).push_back(cube);
   }
 
   void emplace_back(const Vector &x, Scalar z,

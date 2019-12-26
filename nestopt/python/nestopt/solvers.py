@@ -207,7 +207,6 @@ class AdaptiveSolver(object):
     def _default_max_iters(self, problem):
         return (self.nested_max_iters / 2) ** problem.dimension
 
-
 def minimize(solver, problem, **kwargs):
     solver_types = dict(
         nested = NestedSolver,

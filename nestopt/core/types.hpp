@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstddef>
 
+#include <functional>
 #include <initializer_list>
 #include <memory>
 #include <type_traits>
@@ -160,6 +161,8 @@ public:
     return For([&](Size i) { at(i) = body(i); });
   }
 };
+
+using Objective = std::function<Scalar(const Vector &)>;
 
 } // namespace nestopt
 } // namespace core

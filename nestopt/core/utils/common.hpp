@@ -55,7 +55,20 @@ public:
     return std::move(*this);
   }
 
-private:
+  template <typename Body>
+  Size Count(const Body &filter) {
+    NestoptAssert(ref_1_.size() == ref_2_.size());
+    Size counter = 0;
+    const Size size = ref_1_.size();
+    for (Size i = 0; i < size; i++) {
+      if (filter(ref_1_[i], ref_2_[i])) {
+        counter++;
+      }
+    }
+    return counter;
+  }
+
+ private:
   const T1 &ref_1_;
   const T2 &ref_2_;
 };

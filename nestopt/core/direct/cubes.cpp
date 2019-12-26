@@ -37,12 +37,12 @@ class AxisSegment {
   Size axis_;
 };
 
-template <typename Objective>
+template <typename Function>
 static std::vector<AxisSegment> ComputeAxisSegments(
-    const Cube &cube, Objective &&function) {
+    const Cube &cube, Function &&function) {
   const Size dimension = cube.x().size();
   const auto &used_axes = cube.used_axes();
-  const Scalar delta = std::pow(3., -cube.round());
+  const Scalar delta = GetCubeDelta(cube.round());
   const Size free_axis_count = dimension - cube.used_axis_count();
 
   std::vector<AxisSegment> cube_axis_segments;
@@ -95,7 +95,7 @@ static void GenerateCubes(const Cube &cube, CubeSet &output_container,
 }
 
 void Cube::Split(CubeSet &output_container,
-                 Cube::Objective &function) const {
+                 Objective &function) const {
   NestoptAssert(x_.size() >= used_axis_count_);
   NestoptAssert(used_axis_count_ == used_axes_.count());
   const auto axis_segments = ComputeAxisSegments(*this, function);
