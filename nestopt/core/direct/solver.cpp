@@ -52,7 +52,7 @@ static std::vector<Cube> ConvexHull(std::vector<Cube> &&cubes) {
 }
 
 inline Scalar EstimateLipschitzConstant(const std::vector<Cube> &convex_hull, Size j) {
-  const auto slope = [&](Size i_1, Size i_2) {
+  const auto slope = [&] (Size i_1, Size i_2) {
     const Scalar d = convex_hull[i_2].diag() - convex_hull[i_1].diag();
     const Scalar z = convex_hull[i_2].z() - convex_hull[i_1].z();
     return z / d;

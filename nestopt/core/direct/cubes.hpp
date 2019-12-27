@@ -52,12 +52,7 @@ class Cube {
     NestoptAssert(used_axis_count == used_axes.count());
   }
 
-  void Split(CubeSet &output_container, Objective &function) const;
-
-  void Split(CubeSet &output_container, Objective &&function) const {
-    Objective mutable_function = std::move(function);
-    Split(output_container, mutable_function);
-  }
+  void Split(CubeSet &output_container, const Objective &function) const;
 
   Size dimension() const { return x_.size(); }
 

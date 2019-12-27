@@ -7,7 +7,7 @@ namespace direct {
 class AxisSegment {
  public:
   template <typename Function>
-  explicit AxisSegment(Function &&function,
+  explicit AxisSegment(const Function &function,
                        const Vector &center,
                        Scalar delta, Size axis)
       : left_x_(Vector::Copy(center)),
@@ -39,7 +39,7 @@ class AxisSegment {
 
 template <typename Function>
 static std::vector<AxisSegment> ComputeAxisSegments(
-    const Cube &cube, Function &&function) {
+    const Cube &cube, const Function &function) {
   const Size dimension = cube.x().size();
   const auto &used_axes = cube.used_axes();
   const Scalar delta = GetCubeDelta(cube.round() + 1);
@@ -95,7 +95,7 @@ static void GenerateCubes(const Cube &cube, CubeSet &output_container,
 }
 
 void Cube::Split(CubeSet &output_container,
-                 Objective &function) const {
+                 const Objective &function) const {
   NestoptAssert(x_.size() >= used_axis_count_);
   NestoptAssert(used_axis_count_ == used_axes_.count());
   const auto axis_segments = ComputeAxisSegments(*this, function);
