@@ -9,65 +9,120 @@ static Size EvaluateExpectedRounds(const Params &params) {
   return Size(1 / epsilon);
 }
 
-static CubeSet InitializeCubeSet(const Params &params, Objective &objective) {
+template <typename Function>
+static CubeSet InitializeCubeSet(const Params &params, const Function &function) {
   const Size expected_rounds = EvaluateExpectedRounds(params);
   const auto center = Vector::Full(params.get_dimension(), 0.5);
   auto cube_set = CubeSet(params.get_dimension(), expected_rounds);
-  cube_set.push_back(Cube{center, objective(center)});
+  cube_set.push_back(Cube{center, function(center)});
   return cube_set;
 }
 
-static auto ComputeMinMaxFactors(const std::vector<Cube> &cubes) {
-  auto max_factors = std::vector<Scalar>(cubes.size(), -utils::Infinity());
-  auto min_factors = std::vector<Scalar>(cubes.size(), utils::Infinity());
-
-  for (Size i = 0; i < cubes.size(); i++) {
-    for (Size j = 0; j < i; j++) {
-      const Scalar z = cubes[i].z() - cubes[j].z();
-      const Scalar d = cubes[i].diag() - cubes[j].diag();
-      max_factors[i] = utils::Max(max_factors[i], z / d);
-    }
-
-    for (Size j = i + 1; i < cubes.size(); j++) {
-      const Scalar z = cubes[j].z() - cubes[i].z();
-      const Scalar d = cubes[j].diag() - cubes[i].diag();
-      min_factors[i] = utils::Min(min_factors[i], z / d);
-    }
+static std::vector<Cube> ConvexHull(std::vector<Cube> &&cubes) {
+  if (cubes.size() <= 1) {
+    return std::move(cubes);
   }
 
-  return std::make_tuple(min_factors, max_factors);
-}
+  const auto compare_by_z = [](const Cube &lhs, const Cube &rhs) {
+    return lhs.z() < rhs.z();
+  };
 
-static std::vector<Cube> FilterCubes(std::vector<Cube> &&cubes) {
-  const auto [min_factors, max_factors] = ComputeMinMaxFactors(cubes);
+  const auto cross = [](const Cube &a, const Cube &b, const Cube &c) {
+    return (a.diag() - c.diag()) * (b.z()    - c.z()) -
+           (a.z()    - c.z())    * (b.diag() - c.diag()) <= 0;
+  };
 
-  const Size filtered_count = utils::Zip(min_factors, max_factors).Count(
-    [](Scalar min, Scalar max) { return max < min; });
+  const Size start_index = std::min_element(
+    cubes.begin(), cubes.end(), compare_by_z) - cubes.begin();
 
-  auto filtered_cubes = std::vector<Cube>();
-  filtered_cubes.reserve(filtered_count);
+  Size h = 0;
+  auto hull = std::vector<Cube>();
+  hull.reserve(cubes.size() - start_index);
 
-  for (Size i = 0; i < cubes.size(); i++) {
-    if (max_factors[i] < min_factors[i]) {
-      filtered_cubes.push_back(std::move(cubes[i]));
+  for (Size i = start_index; i < cubes.size(); i++) {
+    while (h >= 2 && cross(hull[h - 2], hull[h - 1], cubes[i])) {
+      hull.pop_back();
+      h--;
     }
+    hull.push_back(std::move(cubes[i]));
+    h++;
   }
 
-  return filtered_cubes;
+  return hull;
 }
 
-Result Minimize(const Params &params, Objective &objective) {
-  auto cube_set = InitializeCubeSet(params, objective);
+inline Scalar EstimateLipschitzConstant(const std::vector<Cube> &convex_hull, Size j) {
+  const auto slope = [&](Size i_1, Size i_2) {
+    const Scalar d = convex_hull[i_2].diag() - convex_hull[i_1].diag();
+    const Scalar z = convex_hull[i_2].z() - convex_hull[i_1].z();
+    return z / d;
+  };
+
+  const Size n = convex_hull.size();
+  const Scalar k_1 = (j > 0) ? slope(j - 1, j) : -utils::Infinity();
+  const Scalar k_2 = (j + 1 < n) ? slope(j, j + 1) : -utils::Infinity();
+
+  return utils::Max(k_1, k_2);
+}
+
+inline bool CheckOptimalityCondition(const std::vector<Cube> &convex_hull,
+                                     Size j, Scalar min_f, Scalar magic_eps) {
+  const Scalar l = EstimateLipschitzConstant(convex_hull, j);
+  return (convex_hull[j].z() - l * convex_hull[j].diag()) <=
+         (min_f - magic_eps * utils::Abs(min_f));
+}
+
+Result Minimize(const Params &params, const Objective &objective) {
+  auto result = Result();
+
+  auto func = [&] (const Vector &x) {
+    const Scalar z = objective(x);
+    result.UpdateMinimizer(x, z);
+    return z;
+  };
+
+  auto cube_set = InitializeCubeSet(params, func);
 
   for (Size i = 0; i < params.get_max_iterations_count(); i++) {
-    auto suboptimal_cubes = cube_set.pop();
-    auto optimal_cubes = FilterCubes(std::move(suboptimal_cubes));
+    NestoptVerbose(std::cout << "iter = " << i << std::endl);
 
-    for (Size i = 0; i < optimal_cubes.size(); i++) {
-      optimal_cubes[i].Split(cube_set, objective);
+    const auto convex_hull = ConvexHull(cube_set.top());
+
+    bool has_any_split = false;
+    for (Size j = 0; j < convex_hull.size(); j++) {
+      const bool is_potentially_optimal = CheckOptimalityCondition(
+          convex_hull, j, result.get_minimum(), params.get_magic_eps());
+
+      NestoptVerbose(
+        if (is_potentially_optimal) {
+          std::cout << convex_hull[j] << " optimal" << std::endl;
+        }
+        else {
+          std::cout << convex_hull[j] << " non-optimal" << std::endl;
+        }
+      );
+
+      if (is_potentially_optimal) {
+        has_any_split = true;
+        cube_set.pop(convex_hull[j].index());
+        convex_hull[j].Split(cube_set, func);
+      }
     }
+
+    if (!has_any_split) {
+      NestoptVerbose(
+        std::cout << "There no optimal intervals, "
+                  << "so split the largest one" << std::endl;
+      );
+      const Cube &largest_cube = convex_hull.back();
+      cube_set.pop(largest_cube.index());
+      largest_cube.Split(cube_set, func);
+    }
+
+    NestoptVerbose(std::cout << std::endl);
   }
 
+  return result;
 }
 
 } // namespace direct

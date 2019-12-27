@@ -13,6 +13,10 @@ public:
 
   Scalar Compute(const Vector &x) const;
 
+  Scalar operator()(const Vector &x) const {
+    return Compute(x);
+  }
+
   Scalar Minimum() const;
   Vector Minimizer() const;
 

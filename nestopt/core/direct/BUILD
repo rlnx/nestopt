@@ -28,3 +28,16 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "solver_test",
+    srcs = [ "solver_test.cpp" ],
+    copts = NESTOPT_DEFAULT_COPTS,
+    deps = [
+        ":lib",
+        "//nestopt/core:common_lib",
+        "//nestopt/core/problems:lib",
+        "@gtest//:gtest",
+        "@gtest//:gtest_main",
+    ],
+)

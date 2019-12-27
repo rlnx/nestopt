@@ -44,7 +44,8 @@ CubeSet CreateAndSplitCube(Size dimension, const std::string &used_axes_mask,
 template <typename Body>
 void PopCubeGroups(CubeSet &cube_set, Body body) {
   while (!cube_set.empty()) {
-    body(cube_set.pop());
+    body(cube_set.top());
+    cube_set.pop_all();
   }
 }
 
@@ -138,6 +139,16 @@ TEST_P(CubeTest, EnsureSplitCubesExpectedOrder) {
         << given_used_axes    << " given" << std::endl
         << expected_mask      << " expected" << std::endl
         << used_axes_by_split << " used_axes_by_split" << std::endl;
+    }
+  });
+}
+
+TEST_P(CubeTest, EnsureCubeSetTopReturnsSortedByDiag) {
+  const auto [ dimension, mask ] = GetParam();
+  auto cube_set = CreateAndSplitCube(dimension, mask);
+  PopCubeGroups(cube_set, [] (const std::vector<Cube> &cubes) {
+    for (Size i = 1; i < cubes.size(); i++) {
+      ASSERT_LT(cubes[i - 1].diag(), cubes[i].diag());
     }
   });
 }

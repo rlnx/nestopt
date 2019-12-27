@@ -15,7 +15,8 @@ class Params {
       boundary_low_(Vector::Full(dimension, 0)),
       boundary_high_(Vector::Full(dimension, 1)),
       max_iterations_count_(std::pow(10, dimension)),
-      max_trials_count_(std::pow(20, dimension)) {}
+      max_trials_count_(std::pow(20, dimension)),
+      magic_eps_(1e-4) {}
 
   Size get_dimension() const {
     return dimension_;
@@ -37,6 +38,10 @@ class Params {
     return max_trials_count_;
   }
 
+  Scalar get_magic_eps() const {
+    return magic_eps_;
+  }
+
   auto &set_boundary_low(const Vector &boundary) {
     boundary_low_ = boundary;
     return *this;
@@ -44,6 +49,21 @@ class Params {
 
   auto &set_boundary_high(const Vector &boundary) {
     boundary_high_ = boundary;
+    return *this;
+  }
+
+  auto &set_max_iterations_count(Size max_iterations_count) {
+    max_iterations_count_ = max_iterations_count;
+    return *this;
+  }
+
+  auto &set_max_trials_count(Size max_trials_count) {
+    max_trials_count_ = max_trials_count;
+    return *this;
+  }
+
+  auto &set_magic_eps(Scalar magic_eps) {
+    magic_eps_ = magic_eps;
     return *this;
   }
 
@@ -59,6 +79,10 @@ class Params {
     if (dimension_ != boundary_high_.size()) {
       throw std::invalid_argument("Inconsistent high boundary dimension");
     }
+
+    if (magic_eps_ <= 0) {
+      throw std::invalid_argument("Magic epsilon must be positive value");
+    }
   }
 
  private:
@@ -67,12 +91,13 @@ class Params {
   Vector boundary_high_;
   Size max_iterations_count_;
   Size max_trials_count_;
+  Scalar magic_eps_;
 };
 
 class Result {
  public:
   void UpdateMinimizer(const Vector &minimizer, Scalar minimum) {
-    if (minimum_ < minimum) {
+    if (minimum < minimum_) {
       minimum_ = minimum;
       minimizer_ = minimizer;
     }
@@ -101,12 +126,7 @@ class Result {
   Vector minimizer_;
 };
 
-Result Minimize(const Params &params, Objective &objective);
-
-Result Minimize(const Params &params, Objective &&objective) {
-  auto mutable_objective = std::move(objective);
-  return Minimize(params, mutable_objective);
-}
+Result Minimize(const Params &params, const Objective &objective);
 
 } // namespace direct
 } // namespace core

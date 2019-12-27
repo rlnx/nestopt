@@ -10,6 +10,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <ostream>
 
 #ifdef NDEBUG
 #define NESTOPT_DEBUG 0
@@ -22,6 +23,13 @@
 #define NestoptAssert(expr) assert(expr)
 #else
 #define NestoptAssert(expr)
+#endif
+
+#ifdef NESTOPT_VERBOSE
+#include <iostream>
+#define NestoptVerbose(expr) expr;
+#else
+#define NestoptVerbose(expr)
 #endif
 
 namespace nestopt {
@@ -161,6 +169,16 @@ public:
     return For([&](Size i) { at(i) = body(i); });
   }
 };
+
+inline std::ostream &operator <<(std::ostream &stream, const Vector &vector) {
+  const Size n = vector.size();
+  stream << "[";
+  for (Size i = 0; i < n; i++) {
+    stream << " " << vector[i];
+  }
+  stream << " ]";
+  return stream;
+}
 
 using Objective = std::function<Scalar(const Vector &)>;
 

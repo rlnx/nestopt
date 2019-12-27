@@ -42,7 +42,7 @@ static std::vector<AxisSegment> ComputeAxisSegments(
     const Cube &cube, Function &&function) {
   const Size dimension = cube.x().size();
   const auto &used_axes = cube.used_axes();
-  const Scalar delta = GetCubeDelta(cube.round());
+  const Scalar delta = GetCubeDelta(cube.round() + 1);
   const Size free_axis_count = dimension - cube.used_axis_count();
 
   std::vector<AxisSegment> cube_axis_segments;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bitset>
+#include <ostream>
 #include <queue>
 
 #include "nestopt/core/types.hpp"
@@ -70,7 +71,7 @@ class Cube {
 
   auto &used_axes() const { return used_axes_; }
 
-  Scalar index() const {
+  Size index() const {
     return GetCubeIndex(dimension(), round(), used_axis_count());
   }
 
@@ -85,6 +86,14 @@ class Cube {
   Size used_axis_count_ = 0;
   AxesBitset used_axes_;
 };
+
+inline std::ostream &operator <<(std::ostream &stream, const Cube &cube) {
+  stream << "Cube { "
+         << "(" << cube.round() << ", " << cube.used_axis_count() << "), "
+         << "x = " << cube.x() << ", "
+         << "z = " << cube.z() << " }";
+  return stream;
+}
 
 class CubeGroup {
  public:
@@ -105,10 +114,12 @@ class CubeGroup {
     return queue_.empty();
   }
 
-  Cube pop() {
-    auto best = queue_.top();
+  Cube top() const {
+    return *queue_.top().cube;
+  }
+
+  void pop() {
     queue_.pop();
-    return *best.cube;
   }
 
  private:
@@ -118,7 +129,7 @@ class CubeGroup {
         priority(cube->z()) {}
 
     bool operator <(const Entry &other) const {
-      return priority < other.priority;
+      return priority > other.priority;
     }
 
     Cube *cube;
@@ -169,13 +180,32 @@ class CubeSet {
     get_group(index).emplace_back(x, z, round, used_axis_count, used_axes);
   }
 
-  std::vector<Cube> pop() {
+  bool pop(Size index) {
+    const bool can_pop = index < groups_.size() &&
+                         groups_[index] &&
+                         !groups_[index]->empty();
+    if (can_pop) {
+      groups_[index]->pop();
+    }
+    return can_pop;
+  }
+
+  void pop_all() {
+    for (CubeGroup *group : groups_) {
+      if (group && !group->empty()) {
+        group->pop();
+      }
+    }
+  }
+
+  std::vector<Cube> top() const {
     std::vector<Cube> result;
     result.reserve(groups_.size());
 
-    for (CubeGroup *group : groups_) {
-      if (group && !group->empty()) {
-        result.push_back(group->pop());
+    const std::int64_t n = groups_.size();
+    for (std::int64_t i = n - 1; i >= 0; i--) {
+      if (groups_[i] && !groups_[i]->empty()) {
+        result.push_back(groups_[i]->top());
       }
     }
 
