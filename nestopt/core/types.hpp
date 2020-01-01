@@ -23,7 +23,6 @@
 #define NestoptAssert(expr)
 #endif
 
-#define NESTOPT_VERBOSE
 #ifdef NESTOPT_VERBOSE
 #include <iostream>
 #define NestoptVerbose(expr) expr;

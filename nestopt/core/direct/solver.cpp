@@ -124,8 +124,6 @@ Result Minimize(const Params &params, const Objective &objective) {
     NestoptVerbose(std::cout << "start iter = " << i << std::endl);
 
     auto convex_hull = ConvexHull(cube_set.top());
-    std::cout << convex_hull.front().z() << std::endl;
-    std::cout << traceable_objective.get_minimum() << std::endl;
     NestoptAssert(convex_hull.size() > 0);
     NestoptAssert(convex_hull.front().z() == traceable_objective.get_minimum());
     NestoptAssert(convex_hull.back().index() == cube_set.get_max_index());
