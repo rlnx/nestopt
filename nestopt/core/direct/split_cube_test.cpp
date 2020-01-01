@@ -2,7 +2,7 @@
 
 #include "gtest/gtest.h"
 
-#include "nestopt/core/direct/cubes.hpp"
+#include "nestopt/core/direct/split_cube.hpp"
 #include "nestopt/core/utils/common.hpp"
 
 namespace nestopt {
@@ -17,24 +17,31 @@ struct ZeroFunction {
 };
 
 struct DescendingFunction {
-  Scalar operator()(const Vector &x) {
-    calls_count++;
-    return 10.0 / calls_count;
+  struct State {
+    Size calls_count = 0;
+  };
+
+  DescendingFunction()
+    : state_(new State{}) {}
+
+  Scalar operator()(const Vector &x) const {
+    state_->calls_count++;
+    return 10.0 / state_->calls_count;
   }
 
-  Size calls_count = 0;
+  std::shared_ptr<State> state_;
 };
 
 template <typename Function = ZeroFunction>
-CubeSet SplitCube(const Cube &cube, Function function = Function{}) {
+CubeSet SplitCube(const Cube &cube, const Function &function = Function{}) {
   auto cube_set = CubeSet(cube.dimension(), 0);
-  cube.Split(cube_set, std::move(function));
+  SplitCube(cube, function, cube_set);
   return cube_set;
 }
 
 template <typename Function = ZeroFunction>
 CubeSet CreateAndSplitCube(Size dimension, const std::string &used_axes_mask,
-                           Function function = Function{}) {
+                           const Function &function = Function{}) {
   const auto center = Vector::Full(dimension, 0.0);
   const auto used_axes = Cube::AxesBitset(used_axes_mask);
   const auto cube = Cube(center, 1.0, 0, used_axes.count(), used_axes);

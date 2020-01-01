@@ -16,6 +16,8 @@ class Params {
       boundary_high_(Vector::Full(dimension, 1)),
       max_iterations_count_(std::pow(10, dimension)),
       max_trials_count_(std::pow(20, dimension)),
+      min_diag_accuracy_(1e-5),
+      max_diag_accuracy_(1e-1),
       magic_eps_(1e-4) {}
 
   Size get_dimension() const {
@@ -34,8 +36,16 @@ class Params {
     return max_iterations_count_;
   }
 
-  Size get_max_trials_count() const {
+  Size get_max_trial_count() const {
     return max_trials_count_;
+  }
+
+  Scalar get_min_diag_accuracy() const {
+    return min_diag_accuracy_;
+  }
+
+  Scalar get_max_diag_accuracy() const {
+    return max_diag_accuracy_;
   }
 
   Scalar get_magic_eps() const {
@@ -62,6 +72,16 @@ class Params {
     return *this;
   }
 
+  auto &set_min_diag_accuracy(Scalar min_diag_accuracy) {
+    min_diag_accuracy_ = min_diag_accuracy;
+    return *this;
+  }
+
+  auto &set_max_diag_accuracy(Scalar max_diag_accuracy) {
+    max_diag_accuracy_ = max_diag_accuracy;
+    return *this;
+  }
+
   auto &set_magic_eps(Scalar magic_eps) {
     magic_eps_ = magic_eps;
     return *this;
@@ -80,6 +100,14 @@ class Params {
       throw std::invalid_argument("Inconsistent high boundary dimension");
     }
 
+    if (min_diag_accuracy_ <= 0) {
+      throw std::invalid_argument("Minimal diagonal accuracy must be positive value");
+    }
+
+    if (max_diag_accuracy_ <= 0) {
+      throw std::invalid_argument("Maximal diagonal accuracy must be positive value");
+    }
+
     if (magic_eps_ <= 0) {
       throw std::invalid_argument("Magic epsilon must be positive value");
     }
@@ -91,24 +119,23 @@ class Params {
   Vector boundary_high_;
   Size max_iterations_count_;
   Size max_trials_count_;
+  Scalar min_diag_accuracy_;
+  Scalar max_diag_accuracy_;
   Scalar magic_eps_;
 };
 
 class Result {
  public:
-  void UpdateMinimizer(const Vector &minimizer, Scalar minimum) {
-    if (minimum < minimum_) {
-      minimum_ = minimum;
-      minimizer_ = minimizer;
-    }
-  }
-
   Scalar get_minimum() const {
     return minimum_;
   }
 
   const Vector &get_minimizer() const {
     return minimizer_;
+  }
+
+  Size get_trial_count() const {
+    return trial_count_;
   }
 
   auto &set_minimum(Scalar minimum) {
@@ -121,9 +148,15 @@ class Result {
     return *this;
   }
 
+  auto &set_trial_count(Size trial_count) {
+    trial_count_ = trial_count;
+    return *this;
+  }
+
  private:
   Scalar minimum_ = utils::Infinity();
   Vector minimizer_;
+  Size trial_count_ = 0;
 };
 
 Result Minimize(const Params &params, const Objective &objective);

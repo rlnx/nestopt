@@ -17,7 +17,7 @@ TEST_P(GrishaginTest, DirectConverges) {
   const auto grishagin_f = problems::Grishagin(GetParam());
   const auto direct_params = Params(2)
     .set_max_trials_count(1000000)
-    .set_max_iterations_count(100);
+    .set_max_iterations_count(10000);
   const auto result = Minimize(direct_params, grishagin_f);
 
   ASSERT_LT(result.get_minimum() - grishagin_f.Minimum(), 1e-3)

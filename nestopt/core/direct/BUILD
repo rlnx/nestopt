@@ -18,8 +18,8 @@ cc_library(
 )
 
 cc_test(
-    name = "cubes_test",
-    srcs = [ "cubes_test.cpp" ],
+    name = "split_cube_test",
+    srcs = [ "split_cube_test.cpp" ],
     copts = NESTOPT_DEFAULT_COPTS,
     deps = [
         ":lib",

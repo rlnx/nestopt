@@ -5,7 +5,7 @@
 #include <queue>
 
 #include "nestopt/core/types.hpp"
-#include "nestopt/core/utils/common.hpp"
+#include "nestopt/core/objective.hpp"
 
 namespace nestopt {
 namespace core {
@@ -51,8 +51,6 @@ class Cube {
     NestoptAssert(used_axis_count < x.size());
     NestoptAssert(used_axis_count == used_axes.count());
   }
-
-  void Split(CubeSet &output_container, const Objective &function) const;
 
   Size dimension() const { return x_.size(); }
 
@@ -186,34 +184,38 @@ class CubeSet {
   }
 
   void pop_all() {
-    for (CubeGroup *group : groups_) {
-      if (group && !group->empty()) {
-        group->pop();
-      }
-    }
+    IterateOverGroups([](CubeGroup &g) {
+      g.pop();
+    });
   }
 
   std::vector<Cube> top() const {
     std::vector<Cube> result;
     result.reserve(groups_.size());
 
-    const std::int64_t n = groups_.size();
-    for (std::int64_t i = n - 1; i >= 0; i--) {
-      if (groups_[i] && !groups_[i]->empty()) {
-        result.push_back(groups_[i]->top());
-      }
-    }
+    IterateOverGroupsReverse([&](CubeGroup &g) {
+      result.push_back(g.top());
+    });
 
     return result;
   }
 
   bool empty() const {
-    for (CubeGroup *group : groups_) {
-      if (group && !group->empty()) {
-        return false;
-      }
-    }
-    return true;
+    bool is_empty = true;
+    IterateOverGroups([&](CubeGroup &g) {
+      is_empty = false;
+      return;
+    });
+    return is_empty;
+  }
+
+  Size get_max_index() const {
+    Size max_index = 0;
+    IterateOverGroupsReverse([&](CubeGroup &g) {
+      max_index = g.top().index();
+      return;
+    });
+    return max_index;
   }
 
  private:
@@ -225,6 +227,25 @@ class CubeSet {
       groups_[index] = new CubeGroup();
     }
     return *groups_[index];
+  }
+
+  template <typename Body>
+  void IterateOverGroups(const Body &body) const {
+    for (CubeGroup *group : groups_) {
+      if (group && !group->empty()) {
+        body(*group);
+      }
+    }
+  }
+
+  template <typename Body>
+  void IterateOverGroupsReverse(const Body &body) const {
+    const std::int64_t n = groups_.size();
+    for (std::int64_t i = n - 1; i >= 0; i--) {
+      if (groups_[i] && !groups_[i]->empty()) {
+        body(*groups_[i]);
+      }
+    }
   }
 
   std::vector<CubeGroup *> groups_;

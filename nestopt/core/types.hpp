@@ -4,8 +4,6 @@
 #include <cstdio>
 #include <cstddef>
 
-#include <functional>
-#include <initializer_list>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -25,6 +23,7 @@
 #define NestoptAssert(expr)
 #endif
 
+#define NESTOPT_VERBOSE
 #ifdef NESTOPT_VERBOSE
 #include <iostream>
 #define NestoptVerbose(expr) expr;
@@ -179,8 +178,6 @@ inline std::ostream &operator <<(std::ostream &stream, const Vector &vector) {
   stream << " ]";
   return stream;
 }
-
-using Objective = std::function<Scalar(const Vector &)>;
 
 } // namespace nestopt
 } // namespace core

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "nestopt/core/direct/cubes.hpp"
 
 namespace nestopt {
@@ -7,8 +9,8 @@ namespace direct {
 class AxisSegment {
  public:
   template <typename Function>
-  explicit AxisSegment(const Function &function,
-                       const Vector &center,
+  explicit AxisSegment(const Vector &center,
+                       const Function &function,
                        Scalar delta, Size axis)
       : left_x_(Vector::Copy(center)),
         right_x_(Vector::Copy(center)),
@@ -38,8 +40,8 @@ class AxisSegment {
 };
 
 template <typename Function>
-static std::vector<AxisSegment> ComputeAxisSegments(
-    const Cube &cube, const Function &function) {
+inline auto ComputeAxisSegments(const Cube &cube,
+                                const Function &function) {
   const Size dimension = cube.x().size();
   const auto &used_axes = cube.used_axes();
   const Scalar delta = GetCubeDelta(cube.round() + 1);
@@ -49,7 +51,7 @@ static std::vector<AxisSegment> ComputeAxisSegments(
   cube_axis_segments.reserve(free_axis_count);
   for (Size i = 0; i < dimension; i++) {
     if (!used_axes[i]) {
-      cube_axis_segments.emplace_back(function, cube.x(), delta, i);
+      cube_axis_segments.emplace_back(cube.x(), function, delta, i);
     }
   }
   NestoptAssert(cube_axis_segments.size() == free_axis_count);
@@ -62,8 +64,9 @@ static std::vector<AxisSegment> ComputeAxisSegments(
   return cube_axis_segments;
 }
 
-static void GenerateCubes(const Cube &cube, CubeSet &output_container,
-                          const std::vector<AxisSegment> &axis_segments) {
+inline void GenerateCubes(const Cube &cube,
+                          const std::vector<AxisSegment> &axis_segments,
+                          CubeSet &output_container) {
   Size round = cube.round();
   auto used_axes = cube.used_axes();
   Size used_axis_count = cube.used_axis_count();
@@ -94,14 +97,15 @@ static void GenerateCubes(const Cube &cube, CubeSet &output_container,
                    used_axis_count, used_axes);
 }
 
-void Cube::Split(CubeSet &output_container,
-                 const Objective &function) const {
-  NestoptAssert(x_.size() >= used_axis_count_);
-  NestoptAssert(used_axis_count_ == used_axes_.count());
-  const auto axis_segments = ComputeAxisSegments(*this, function);
-  GenerateCubes(*this, output_container, axis_segments);
+template <typename Function>
+inline void SplitCube(const Cube &cube,
+                      const Function &function,
+                      CubeSet &output_container) {
+  const auto axis_segments = ComputeAxisSegments(cube, function);
+  GenerateCubes(cube, axis_segments, output_container);
 }
 
 } // namespace direct
 } // namespace core
 } // namespace nestopt
+
