@@ -146,6 +146,10 @@ class Result {
     return trial_count_;
   }
 
+  Size get_iteration_count() const {
+    return iteration_count_;
+  }
+
   StopCondition get_stop_condition() const {
     return stop_condition_;
   }
@@ -165,6 +169,11 @@ class Result {
     return *this;
   }
 
+  auto &set_iteration_count(Size iteration_count) {
+    iteration_count_ = iteration_count;
+    return *this;
+  }
+
   auto &set_stop_condition(StopCondition stop_condition) {
     stop_condition_ = stop_condition;
     return *this;
@@ -174,6 +183,7 @@ class Result {
   Scalar minimum_ = utils::Infinity();
   Vector minimizer_;
   Size trial_count_ = 0;
+  Size iteration_count_ = 0;
   StopCondition stop_condition_ = StopCondition::none;
 };
 

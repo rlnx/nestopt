@@ -33,8 +33,8 @@ inline Scalar EstimateLipschitzConstant(const std::vector<Cube> &convex_hull, Si
   return utils::Max(k_1, k_2);
 }
 
-inline bool CheckOptimalityCondition(const std::vector<Cube> &convex_hull,
-                                     Size j, Scalar min_f, Scalar magic_eps) {
+inline bool CheckOptimalityCondition(Size j, const std::vector<Cube> &convex_hull,
+                                     Scalar min_f, Scalar magic_eps) {
   const Scalar l = EstimateLipschitzConstant(convex_hull, j);
   return (convex_hull[j].z() - l * convex_hull[j].diag()) <=
          (min_f - magic_eps * utils::Abs(min_f));
@@ -79,7 +79,7 @@ static std::vector<Cube> SelectOptimalCubes(std::vector<Cube> &&convex_hull,
 
   for (Size j = 0; j < convex_hull.size(); j++) {
     const bool is_optimal =
-      CheckOptimalityCondition(convex_hull, j, min_f, magic_eps);
+      CheckOptimalityCondition(j, convex_hull, min_f, magic_eps);
 
     NestoptVerbose(
       if (is_optimal) {
@@ -107,9 +107,9 @@ static std::vector<Cube> SelectOptimalCubes(std::vector<Cube> &&convex_hull,
 }
 
 template <typename Function>
-static void SplitCubes(CubeSet &cube_set,
-                       const std::vector<Cube> &optimal_cubes,
-                       const Function &function) {
+static void SplitCubes(const std::vector<Cube> &optimal_cubes,
+                       const Function &function,
+                       CubeSet &cube_set) {
   for (const auto &cube : optimal_cubes) {
     cube_set.pop(cube.index());
     SplitCube(cube, function, cube_set);
@@ -166,7 +166,7 @@ Result Minimize(const Params &params, const Objective &objective) {
                                             params.get_magic_eps());
     NestoptAssert(optimal_cubes.size() > 0);
 
-    SplitCubes(cube_set, optimal_cubes, traceable_objective);
+    SplitCubes(optimal_cubes, traceable_objective, cube_set);
 
     NestoptVerbose(std::cout << "finish iter = " << iter_counter << std::endl);
     iter_counter++;
@@ -175,6 +175,7 @@ Result Minimize(const Params &params, const Objective &objective) {
   return Result().set_minimizer(traceable_objective.get_minimizer())
                  .set_minimum(traceable_objective.get_minimum())
                  .set_trial_count(traceable_objective.get_trial_count())
+                 .set_iteration_count(iter_counter)
                  .set_stop_condition(stop_condition);
 }
 
