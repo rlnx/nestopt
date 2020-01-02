@@ -124,6 +124,14 @@ class Params {
   Scalar magic_eps_;
 };
 
+enum class StopCondition {
+  none          = 1u < 0,
+  by_iterations = 1u < 1,
+  by_trials     = 1u < 2,
+  by_min_diag   = 1u < 3,
+  by_max_diag   = 1u < 4
+};
+
 class Result {
  public:
   Scalar get_minimum() const {
@@ -136,6 +144,10 @@ class Result {
 
   Size get_trial_count() const {
     return trial_count_;
+  }
+
+  StopCondition get_stop_condition() const {
+    return stop_condition_;
   }
 
   auto &set_minimum(Scalar minimum) {
@@ -153,10 +165,16 @@ class Result {
     return *this;
   }
 
+  auto &set_stop_condition(StopCondition stop_condition) {
+    stop_condition_ = stop_condition;
+    return *this;
+  }
+
  private:
   Scalar minimum_ = utils::Infinity();
   Vector minimizer_;
   Size trial_count_ = 0;
+  StopCondition stop_condition_ = StopCondition::none;
 };
 
 Result Minimize(const Params &params, const Objective &objective);

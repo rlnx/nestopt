@@ -116,30 +116,48 @@ static void SplitCubes(CubeSet &cube_set,
   }
 }
 
+static StopCondition CheckStopCondition(Size iter_counter,
+                                        const Params &params,
+                                        const TracableObjective &objective,
+                                        const std::vector<Cube> &convex_hull) {
+  if (iter_counter + 1 >= params.get_max_trial_count()) {
+    return StopCondition::by_iterations;
+  }
+
+  if (objective.get_trial_count() >= params.get_max_trial_count()) {
+    return StopCondition::by_trials;
+  }
+
+  if (convex_hull.front().diag() <= params.get_min_diag_accuracy()) {
+    return StopCondition::by_min_diag;
+  }
+
+  if (convex_hull.back().diag() <= params.get_max_diag_accuracy()) {
+    return StopCondition::by_max_diag;
+  }
+
+  return StopCondition::none;
+}
+
 Result Minimize(const Params &params, const Objective &objective) {
   auto traceable_objective = TracableObjective(objective);
   auto cube_set = InitializeCubeSet(params, traceable_objective);
 
-  for (Size i = 0; i < params.get_max_iterations_count(); i++) {
-    NestoptVerbose(std::cout << "start iter = " << i << std::endl);
+  Size iter_counter = 0;
+  StopCondition stop_condition = StopCondition::none;
+
+  for (;;) {
+    NestoptVerbose(std::cout << "start iter = " << iter_counter << std::endl);
 
     auto convex_hull = ConvexHull(cube_set.top());
     NestoptAssert(convex_hull.size() > 0);
     NestoptAssert(convex_hull.front().z() == traceable_objective.get_minimum());
     NestoptAssert(convex_hull.back().index() == cube_set.get_max_index());
 
-    const bool iters_stop = i + 1 >= params.get_max_trial_count();
-
-    const bool trials_stop = traceable_objective.get_trial_count() >=
-                             params.get_max_trial_count();
-
-    const bool min_diag_stop = convex_hull.front().diag() <=
-                               params.get_min_diag_accuracy();
-
-    const bool max_diag_stop = convex_hull.back().diag() <=
-                               params.get_max_diag_accuracy();
-
-    if (iters_stop || trials_stop || min_diag_stop || max_diag_stop) {
+    stop_condition = CheckStopCondition(iter_counter, params,
+                                        traceable_objective,
+                                        convex_hull);
+    if (stop_condition != StopCondition::none) {
       break;
     }
 
@@ -150,12 +168,14 @@ Result Minimize(const Params &params, const Objective &objective) {
 
     SplitCubes(cube_set, optimal_cubes, traceable_objective);
 
-    NestoptVerbose(std::cout << "finish iter = " << i << std::endl);
+    NestoptVerbose(std::cout << "finish iter = " << iter_counter << std::endl);
+    iter_counter++;
   }
 
   return Result().set_minimizer(traceable_objective.get_minimizer())
                  .set_minimum(traceable_objective.get_minimum())
-                 .set_trial_count(traceable_objective.get_trial_count());
+                 .set_trial_count(traceable_objective.get_trial_count())
+                 .set_stop_condition(stop_condition);
 }
 
 } // namespace direct
