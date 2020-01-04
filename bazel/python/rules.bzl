@@ -39,7 +39,10 @@ def _py_package_impl(ctx):
         files = [ f for f in rfiles.to_list() if not f.is_source ]
         target_files += files
 
-    return DefaultInfo(files = depset(target_files))
+    return DefaultInfo(
+        files = depset(target_files),
+        runfiles = ctx.runfiles(files=target_files)
+    )
 
 py_package = rule(
     implementation = _py_package_impl,
@@ -47,7 +50,6 @@ py_package = rule(
         'srcs': attr.label_list(
             mandatory = True,
             allow_files = True,
-        ),
-        'root': attr.string(),
+        )
     },
 )
