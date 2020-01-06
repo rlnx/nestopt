@@ -13,8 +13,8 @@ class Params {
     : dimension_(dimension),
       boundary_low_(Vector::Full(dimension, 0)),
       boundary_high_(Vector::Full(dimension, 1)),
-      max_iteration_count_(std::pow(10, dimension)),
-      max_trial_count_(std::pow(20, dimension)),
+      max_iteration_count_(std::numeric_limits<Size>::max()),
+      max_trial_count_(std::numeric_limits<Size>::max()),
       min_diag_accuracy_(1e-5),
       max_diag_accuracy_(1e-1),
       magic_eps_(1e-4) {}
@@ -99,12 +99,12 @@ class Params {
       throw std::invalid_argument("Inconsistent high boundary dimension");
     }
 
-    if (min_diag_accuracy_ <= 0) {
-      throw std::invalid_argument("Minimal diagonal accuracy must be positive value");
+    if (min_diag_accuracy_ < 0) {
+      throw std::invalid_argument("Minimal diagonal accuracy must non-negative value");
     }
 
-    if (max_diag_accuracy_ <= 0) {
-      throw std::invalid_argument("Maximal diagonal accuracy must be positive value");
+    if (max_diag_accuracy_ < 0) {
+      throw std::invalid_argument("Maximal diagonal accuracy must non-negative value");
     }
 
     if (magic_eps_ <= 0) {
@@ -124,11 +124,11 @@ class Params {
 };
 
 enum class StopCondition {
-  none          = 1u < 0,
-  by_iterations = 1u < 1,
-  by_trials     = 1u < 2,
-  by_min_diag   = 1u < 3,
-  by_max_diag   = 1u < 4
+  none          = 1u << 0,
+  by_iterations = 1u << 1,
+  by_trials     = 1u << 2,
+  by_min_diag   = 1u << 3,
+  by_max_diag   = 1u << 4
 };
 
 class Result {

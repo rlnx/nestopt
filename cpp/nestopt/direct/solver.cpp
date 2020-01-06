@@ -1,11 +1,22 @@
 #include "nestopt/direct/solver.hpp"
 #include "nestopt/direct/split_cube.hpp"
+#include <iostream>
 
 namespace nestopt {
 namespace direct {
 
 static Size EstimateExpectedRounds(const Params &params) {
-  return Size(1. / params.get_min_diag_accuracy()) + 1;
+  constexpr Scalar min_allowed_accuracy = 1e-7;
+  Size rounds_by_itertions = params.get_max_iteration_count();
+  Size rounds_by_accuracy = std::numeric_limits<Size>::max();
+  if (params.get_min_diag_accuracy() >= min_allowed_accuracy) {
+    rounds_by_accuracy = Size(1. / params.get_min_diag_accuracy()) + 1;
+  }
+  Size rounds_estimation = utils::Min(rounds_by_itertions, rounds_by_accuracy);
+  if (rounds_estimation == std::numeric_limits<Size>::max()) {
+    rounds_estimation = 10000;
+  }
+  return rounds_estimation;
 }
 
 template <typename Function>
@@ -118,7 +129,7 @@ static StopCondition CheckStopCondition(Size iter_counter,
                                         const Params &params,
                                         const TracableObjective &objective,
                                         const std::vector<Cube> &convex_hull) {
-  if (iter_counter + 1 >= params.get_max_trial_count()) {
+  if (iter_counter + 1 >= params.get_max_iteration_count()) {
     return StopCondition::by_iterations;
   }
 
@@ -137,8 +148,47 @@ static StopCondition CheckStopCondition(Size iter_counter,
   return StopCondition::none;
 }
 
+template <typename Function>
+class RescaledObjective {
+ public:
+  template <typename = detail::enable_if_objective_t<Function>>
+  explicit RescaledObjective(const Function &function,
+                             const Vector &scale,
+                             const Vector &offset)
+      : scale_(scale),
+        offset_(offset),
+        function_(function),
+        cache_(Vector::Empty(scale.size())) {
+    NestoptAssert(scale.size() == offset.size());
+  }
+
+  Scalar operator()(const Vector &x) {
+    NestoptAssert(x.size() == scale_.size());
+    for (Size i = 0; i < x.size(); i++) {
+      cache_[i] = scale_[i] * x[i] + offset_[i];
+    }
+    return function_(cache_);
+  }
+
+ private:
+  Vector scale_;
+  Vector offset_;
+  Function function_;
+  Vector cache_;
+};
+
 Result Minimize(const Params &params, const Objective &objective) {
-  auto traceable_objective = TracableObjective(objective);
+  params.Validate();
+
+  const auto a = params.get_boundary_low();
+  const auto b = params.get_boundary_high();
+  const auto scale = Vector::Full(params.get_dimension(), [&](Size i) {
+    return double{b[i]} - double{a[i]};
+  });
+  const auto offset = Vector::Copy(a);
+
+  auto rescaled_objective = RescaledObjective(objective, scale, offset);
+  auto traceable_objective = TracableObjective(rescaled_objective);
   auto cube_set = InitializeCubeSet(params, traceable_objective);
 
   Size iter_counter = 0;
@@ -170,11 +220,17 @@ Result Minimize(const Params &params, const Objective &objective) {
     iter_counter++;
   }
 
-  return Result().set_minimizer(traceable_objective.get_minimizer())
-                 .set_minimum(traceable_objective.get_minimum())
-                 .set_trial_count(traceable_objective.get_trial_count())
-                 .set_iteration_count(iter_counter)
-                 .set_stop_condition(stop_condition);
+  const auto minimizer = traceable_objective.get_minimizer();
+  const auto rescaled_minimizer = Vector::Like(minimizer).Fill([&](Size i) {
+    return scale[i] * minimizer[i] + offset[i];
+  });
+
+  return Result()
+    .set_minimizer(rescaled_minimizer)
+    .set_minimum(traceable_objective.get_minimum())
+    .set_trial_count(traceable_objective.get_trial_count())
+    .set_iteration_count(iter_counter)
+    .set_stop_condition(stop_condition);
 }
 
 } // namespace direct

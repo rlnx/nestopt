@@ -19,14 +19,10 @@ class Objective {
   template <typename Function,
             typename = detail::enable_if_objective_t<Function>>
   Objective(Function &&function)
-    : impl_(new detail::TemplateObjectiveImpl{std::forward<Function>(function)}) {}
+    : impl_(new detail::ObjectiveImplTemplate{std::forward<Function>(function)}) {}
 
   Scalar operator ()(const Vector &x) const {
     return (*impl_)(x);
-  }
-
-  Shared<detail::ObjectiveImpl> get_impl() const {
-    return impl_;
   }
 
  protected:
@@ -42,17 +38,20 @@ class Objective {
   }
 
  private:
+  Shared<detail::ObjectiveImpl> get_impl() const {
+    return impl_;
+  }
+
   Shared<detail::ObjectiveImpl> impl_;
 };
 
 class TracableObjective : public Objective {
  public:
-  TracableObjective(const Objective &objective)
-    : Objective(new detail::TracableObjectiveImpl{objective.get_impl()}) {}
-
-  Shared<detail::TracableObjectiveImpl> get_impl() const {
-    return get_derived_impl<detail::TracableObjectiveImpl>();
-  }
+  template <typename Function,
+            typename = detail::enable_if_objective_t<Function>>
+  TracableObjective(Function &&function)
+    : Objective(new detail::TracableObjectiveImplTemplate{
+        std::forward<Function>(function)}) {}
 
   Scalar get_minimum() const {
     return get_impl()->get_minimum();
@@ -64,6 +63,11 @@ class TracableObjective : public Objective {
 
   Size get_trial_count() const {
     return get_impl()->get_trial_count();
+  }
+
+ private:
+  Shared<detail::TracableObjectiveImpl> get_impl() const {
+    return get_derived_impl<detail::TracableObjectiveImpl>();
   }
 };
 

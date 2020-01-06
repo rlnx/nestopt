@@ -116,7 +116,39 @@ class TestAdaptiveSolver(ConvergenceTest):
                                nested_max_iters=30,
                                nested_init_max_iters=10)
         diff = minimizers_diff(problem.minimizer, result.minimizer)
-        self.assertConverges(result, diff, 0.05, 'Nested', f'GKLS-{d}D #{n}')
+        self.assertConverges(result, diff, 0.05, 'Adaptive', f'GKLS-{d}D #{n}')
+
+
+class TestDirectSolver(ConvergenceTest):
+    @run_on_test_class()
+    def test_convergence_on_grishagin(self, n, d):
+        problem = nopt.GrishaginProblem(n)
+        result = nopt.minimize('direct', problem,
+                               min_tol=1e-5,
+                               max_tol=1e-1)
+        diff = minimizers_diff(problem.minimizer, result.minimizer)
+        self.assertConverges(result, diff, 0.01, 'Direct', f'Grishagin #{n}')
+
+    @run_on_test_class()
+    def test_convergence_on_gkls_2d(self, n, d):
+        self._test_convergence_on_gkls(n, d, 100)
+
+    @run_on_test_class(numbers=range(1, 50 + 1), dimensions=[3])
+    def test_convergence_on_gkls_3d(self, n, d):
+        self._test_convergence_on_gkls(n, d, 800)
+
+    @run_on_test_class(numbers=[1, 2, 4], dimensions=[4])
+    def test_convergence_on_gkls_4d(self, n, d):
+        self._test_convergence_on_gkls(n, d, 1500)
+
+    def _test_convergence_on_gkls(self, n, d, max_iters):
+        problem = nopt.GKLSProblem(n, d)
+        result = nopt.minimize('direct', problem,
+                               min_tol=0,
+                               max_tol=0,
+                               max_iters=max_iters)
+        diff = minimizers_diff(problem.minimizer, result.minimizer)
+        self.assertConverges(result, diff, 0.05, 'Direct', f'GKLS-{d}D #{n}')
 
 
 if __name__ == '__main__':

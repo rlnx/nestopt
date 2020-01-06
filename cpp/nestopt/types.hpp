@@ -75,6 +75,10 @@ public:
     std::copy(vector.begin(), vector.end(), data_);
   }
 
+  operator bool() const {
+    return data_ != nullptr;
+  }
+
   Size size() const {
     return size_;
   }
@@ -117,12 +121,27 @@ private:
 };
 
 class Vector : public VectorBase<Scalar> {
-public:
+ private:
+  template <typename Function>
+  static constexpr bool is_fill_function_v =
+    std::is_invocable_r_v<Scalar, Function, Size>;
+
+ public:
   using Super = VectorBase<Scalar>;
   using Super::Super;
 
   static Vector Empty(Size size) {
     return Vector(new Scalar[size], size);
+  }
+
+  static Vector Like(const Vector &other) {
+    return Empty(other.size());
+  }
+
+  template <typename Body,
+            typename = std::enable_if_t<is_fill_function_v<Body>>>
+  static Vector Full(Size size, const Body &body) {
+    return Empty(size).Fill(body);
   }
 
   static Vector Full(Size size, Scalar value) {
@@ -149,21 +168,32 @@ public:
   }
 
   template <typename Body>
-  Vector &&For(const Body &body) {
+  const auto &For(const Body &body) const {
     for (Size i = 0; i < size(); i++) {
       body(i);
     }
-    return std::move(*this);
+    return *this;
   }
 
   template <typename Body>
-  Vector &&ForEach(const Body &body) {
+  const auto &ForEach(const Body &body) const {
     return For([&](Size i) { body(at(i)); });
   }
 
-  template <typename Body>
-  Vector &&Fill(const Body &body) {
+  template <typename Body,
+            typename = std::enable_if_t<is_fill_function_v<Body>>>
+  Vector &Fill(const Body &body) {
     return For([&](Size i) { at(i) = body(i); });
+  }
+
+  template <typename Body>
+  auto &For(const Body &body) {
+    return const_cast<Vector &>(std::as_const(*this).For(body));
+  }
+
+  template <typename Body>
+  auto &ForEach(const Body &body) {
+    return const_cast<Vector &>(std::as_const(*this).ForEach(body));
   }
 };
 

@@ -17,7 +17,8 @@ def _nested_loop(interval_set, max_iters,
 class SolverResult(object):
     minimizer: np.ndarray
     minimum: float
-    total_evals: int = None
+    total_trials: int = None
+    total_iters: int = None
     trials: np.ndarray = None
 
 
@@ -29,14 +30,14 @@ class NestedTask(object):
         self._min_x = None
         self._min_z = np.inf
         self._problem = problem
-        self._total_evals = 0
+        self._total_trials = 0
         self._x = np.zeros(problem.dimension)
         self._trials = []
         self._solve(0)
         return SolverResult(
             minimizer=self._min_x,
             minimum=self._min_z,
-            total_evals=self._total_evals,
+            total_trials=self._total_trials,
             trials=np.array(self._trials)
         )
 
@@ -62,7 +63,7 @@ class NestedTask(object):
         if z < self._min_z:
             self._min_x = self._x.copy()
             self._min_z = z
-        self._total_evals += 1
+        self._total_trials += 1
         return z
 
 
@@ -84,14 +85,14 @@ class AdaptiveTaskContext(object):
         self.queue = queue
         self.params = params
         self.minimum = np.inf
-        self.total_evals = 0
+        self.total_trials = 0
         self.trials = []
 
     def update_minimum(self, minimum, minimizer):
         if minimum < self.minimum:
             self.minimum = minimum
             self.minimizer = minimizer.copy()
-        self.total_evals += 1
+        self.total_trials += 1
         if self.params.save_trials:
             self.trials.append(minimizer.copy())
 
@@ -194,7 +195,7 @@ class AdaptiveSolver(object):
         return SolverResult(
             minimizer=ctx.minimizer,
             minimum=ctx.minimum,
-            total_evals=ctx.total_evals,
+            total_trials=ctx.total_trials,
             trials=np.array(ctx.trials),
         )
 
@@ -212,19 +213,27 @@ class DirectSolver(object):
     magic_eps: float = 1e-4
     max_iters: int = None
     max_trials: int = None
+    save_trials: bool = False
 
     def solve(self, problem):
         p = nn.DirectParams(problem.dimension)
-        p.boundary_low = problem.domain.min,
-        p.boundary_high = problem.domain.max,
-        p.max_iterations_count = self.max_iters,
-        p.max_trial_count = self.max_trials,
-        p.min_diag_accuracy = self.min_tol,
-        p.max_diag_accuracy = self.max_tol,
-        p.magic_eps = self.magic_eps,
+        p.boundary_low = problem.domain.min
+        p.boundary_high = problem.domain.max
+        if self.max_iters is not None:
+            p.max_iteration_count = self.max_iters
+        if self.max_trials is not None:
+            p.max_trial_count = self.max_trials
+        p.min_diag_accuracy = self.min_tol
+        p.max_diag_accuracy = self.max_tol
+        p.magic_eps = self.magic_eps
         f = problem._native if hasattr(problem, '_native') else problem
         r = nn.direct_minimize(p, f)
-        return r
+        return SolverResult(
+            minimizer = r.minimizer,
+            minimum = r.minimum,
+            total_trials = r.trial_count,
+            total_iters = r.iteration_count
+        )
 
 
 def minimize(solver, problem, **kwargs):

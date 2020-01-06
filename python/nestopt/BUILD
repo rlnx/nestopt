@@ -25,6 +25,15 @@ py_test(
 )
 
 py_test(
+    name = "test_direct_solver",
+    main = "solvers_test.py",
+    srcs = [ "solvers_test.py" ],
+    deps = [ ":nestopt_py_lib" ],
+    imports = [ ".." ],
+    args = [ "TestDirectSolver" ]
+)
+
+py_test(
     name = "test_utils",
     main = "utils_test.py",
     srcs = [
