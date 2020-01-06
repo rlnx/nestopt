@@ -220,12 +220,12 @@ class DirectSolver(object):
         p.boundary_low = problem.domain.min
         p.boundary_high = problem.domain.max
         if self.max_iters is not None:
-            p.max_iteration_count = self.max_iters
+            p.max_iteration_count = int(self.max_iters)
         if self.max_trials is not None:
-            p.max_trial_count = self.max_trials
-        p.min_diag_accuracy = self.min_tol
-        p.max_diag_accuracy = self.max_tol
-        p.magic_eps = self.magic_eps
+            p.max_trial_count = int(self.max_trials)
+        p.min_diag_accuracy = float(self.min_tol)
+        p.max_diag_accuracy = float(self.max_tol)
+        p.magic_eps = float(self.magic_eps)
         f = problem._native if hasattr(problem, '_native') else problem
         r = nn.direct_minimize(p, f)
         return SolverResult(

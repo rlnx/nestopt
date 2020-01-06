@@ -1,6 +1,7 @@
 from .solvers import (
     NestedSolver,
     AdaptiveSolver,
+    DirectSolver,
     SolverResult,
     minimize,
 )
